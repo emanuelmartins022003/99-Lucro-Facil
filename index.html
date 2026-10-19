@@ -13,8 +13,8 @@
             --surface-light: #2c2c2e;
             --text: #f5f5f5;
             --text-muted: #8e8e93;
-            --primary: #34c759; /* Verde iOS */
-            --danger: #ff453a;  /* Vermelho iOS */
+            --primary: #34c759;
+            --danger: #ff453a;
             --border: #38383a;
         }
         
@@ -35,7 +35,6 @@
             overflow: hidden;
         }
 
-        /* Cabeçalho Fixo */
         header {
             padding: 16px;
             text-align: center;
@@ -46,17 +45,15 @@
             z-index: 10;
         }
 
-        /* Área de Conteúdo com Rolagem */
         main {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
-            padding-bottom: 90px; /* Espaço para a barra inferior */
+            padding-bottom: 90px;
         }
 
         .hidden { display: none !important; }
 
-        /* Cartões (Cards) */
         .card { 
             background: var(--surface); 
             border-radius: 16px; 
@@ -67,7 +64,6 @@
 
         h2 { font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
         
-        /* Inputs Nativos */
         .input-group { margin-bottom: 16px; }
         label { display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-muted); font-weight: 500; }
         
@@ -78,13 +74,12 @@
             border: 1px solid var(--border); 
             background: var(--surface-light); 
             color: var(--text); 
-            font-size: 16px; /* Evita zoom no iOS */
+            font-size: 16px;
             appearance: none;
         }
 
         input:focus, select:focus { outline: none; border-color: var(--primary); }
 
-        /* Botões */
         button { 
             width: 100%; 
             padding: 16px; 
@@ -101,7 +96,6 @@
         .btn-danger { background: var(--danger); color: #fff; }
         .btn-outline { background: transparent; border: 1px solid var(--text-muted); color: var(--text); }
 
-        /* Resumos e Valores */
         .summary-row { 
             display: flex; 
             justify-content: space-between; 
@@ -115,7 +109,6 @@
         .text-green { color: var(--primary); }
         .text-red { color: var(--danger); }
 
-        /* Lista de Lançamentos */
         .list-item { 
             display: flex; 
             justify-content: space-between; 
@@ -129,7 +122,6 @@
         .item-cat { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .item-val { font-weight: 600; font-size: 1rem; }
 
-        /* Barra de Navegação Inferior (Bottom Nav) */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -138,7 +130,7 @@
             background: #1c1c1e;
             display: flex;
             justify-content: space-around;
-            padding: 10px 0 25px 0; /* Padding extra para o "home indicator" do iPhone */
+            padding: 10px 0 25px 0;
             border-top: 1px solid var(--border);
             z-index: 100;
         }
@@ -156,28 +148,19 @@
         }
 
         .nav-item.active { color: var(--primary); }
-        
-        .nav-icon { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
+        .nav-icon { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; pointer-events: none; }
 
-        /* Ajustes específicos para o histórico */
         .filter-dates { display: flex; gap: 12px; }
         .filter-dates .input-group { flex: 1; }
-
     </style>
 </head>
 <body>
 
-    <!-- Topo Fixo -->
-    <header>
-        🚗 99 Lucro Fácil
-    </header>
+    <header>🚗 99 Lucro Fácil</header>
 
-    <!-- Conteúdo Principal (Rolagem) -->
     <main>
-        
-        <!-- ================= ABA OPERAÇÃO ================= -->
+        <!-- ABA OPERAÇÃO -->
         <div id="view-operacao">
-            
             <div class="card" id="painel-controle">
                 <h2>Status do Período</h2>
                 
@@ -235,7 +218,7 @@
                 
                 <div class="input-group">
                     <label>Valor (R$)</label>
-                    <input type="number" id="valor-lancamento" step="0.01" inputmode="decimal" placeholder="0,00">
+                    <input type="text" id="valor-lancamento" inputmode="decimal" placeholder="0,00">
                 </div>
                 
                 <button class="btn-primary" onclick="adicionarLancamento()">Adicionar Lançamento</button>
@@ -247,9 +230,8 @@
             </div>
         </div>
 
-        <!-- ================= ABA HISTÓRICO ================= -->
+        <!-- ABA HISTÓRICO -->
         <div id="view-historico" class="hidden">
-            
             <div class="card">
                 <h2>Filtros</h2>
                 <div class="filter-dates">
@@ -297,10 +279,9 @@
                 <div id="lista-historico"></div>
             </div>
         </div>
-
     </main>
 
-    <!-- Barra de Navegação Inferior -->
+    <!-- Navegação Inferior -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('operacao')" id="nav-operacao">
             <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
@@ -313,12 +294,20 @@
     </nav>
 
 <script>
-    let periodoAtivo = JSON.parse(localStorage.getItem('periodoAtivo')) || null;
-    let todosLancamentos = JSON.parse(localStorage.getItem('todosLancamentos')) || [];
+    // Carrega os dados tentando evitar erros se o armazenamento estiver corrompido
+    let periodoAtivo = null;
+    let todosLancamentos = [];
+    try {
+        const p = localStorage.getItem('periodoAtivo');
+        const l = localStorage.getItem('todosLancamentos');
+        if (p) periodoAtivo = JSON.parse(p);
+        if (l) todosLancamentos = JSON.parse(l);
+    } catch (e) {
+        console.error("Erro ao carregar dados", e);
+    }
 
     function init() { atualizarInterface(); }
 
-    // Navegação entre abas
     function switchTab(tab) {
         document.getElementById('view-operacao').classList.add('hidden');
         document.getElementById('view-historico').classList.add('hidden');
@@ -332,7 +321,6 @@
             document.getElementById('view-historico').classList.remove('hidden');
             document.getElementById('nav-historico').classList.add('active');
             
-            // Preencher data atual se estiver vazio
             const hoje = new Date().toISOString().split('T')[0];
             if(!document.getElementById('filtro-inicio').value) {
                 document.getElementById('filtro-inicio').value = hoje;
@@ -363,15 +351,28 @@
 
     function adicionarLancamento() {
         const tipo = document.getElementById('tipo-lancamento').value;
-        const valor = parseFloat(document.getElementById('valor-lancamento').value);
+        
+        // Correção para aceitar vírgula no celular
+        let valorStr = document.getElementById('valor-lancamento').value;
+        valorStr = valorStr.replace(',', '.');
+        const valor = parseFloat(valorStr);
+        
         const desc = document.getElementById('desc-lancamento').value || (tipo === 'ganho' ? 'Corrida 99' : 'Despesa');
         const cat = tipo === 'despesa' ? document.getElementById('categoria-lancamento').value : 'Ganho';
 
-        if(isNaN(valor) || valor <= 0) { return alert("Insira um valor válido."); }
+        if(isNaN(valor) || valor <= 0) { 
+            return alert("Insira um valor válido."); 
+        }
 
         todosLancamentos.push({
-            id: Date.now(), periodoId: periodoAtivo.id, dataHora: new Date().toLocaleString('pt-BR'),
-            dataFiltro: new Date().toISOString().split('T')[0], tipo: tipo, categoria: cat, descricao: desc, valor: valor
+            id: Date.now(), 
+            periodoId: periodoAtivo.id, 
+            dataHora: new Date().toLocaleString('pt-BR'),
+            dataFiltro: new Date().toISOString().split('T')[0], 
+            tipo: tipo, 
+            categoria: cat, 
+            descricao: desc, 
+            valor: valor
         });
 
         salvarDados();
@@ -381,8 +382,10 @@
     }
 
     function salvarDados() {
-        localStorage.setItem('periodoAtivo', JSON.stringify(periodoAtivo));
-        localStorage.setItem('todosLancamentos', JSON.stringify(todosLancamentos));
+        try {
+            localStorage.setItem('periodoAtivo', JSON.stringify(periodoAtivo));
+            localStorage.setItem('todosLancamentos', JSON.stringify(todosLancamentos));
+        } catch(e) { console.error("Erro ao salvar", e); }
     }
 
     function atualizarInterface() {
@@ -439,7 +442,7 @@
         if(dtInicio) filtrados = filtrados.filter(l => l.dataFiltro >= dtInicio);
         if(dtFim) filtrados = filtrados.filter(l => l.dataFiltro <= dtFim);
         
-        let paraExibir = [...filtrados]; // Copia para não afetar o cálculo total
+        let paraExibir = [...filtrados];
 
         if(catFiltro !== 'Todas') {
             paraExibir = paraExibir.filter(l => l.tipo === 'despesa' && l.categoria === catFiltro);
@@ -458,11 +461,12 @@
         }
 
         paraExibir.reverse().forEach(l => {
+            const dataExibicao = l.dataHora ? l.dataHora.split(' ')[0] : (l.dataFiltro || '');
             container.innerHTML += `
                 <div class="list-item">
                     <div class="item-info">
                         <span class="item-desc">${l.descricao}</span>
-                        <span class="item-cat">${l.categoria} • ${l.dataHora.split(' ')[0]}</span>
+                        <span class="item-cat">${l.categoria} • ${dataExibicao}</span>
                     </div>
                     <span class="item-val ${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
                         ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
@@ -482,4 +486,24 @@
 
     function exportarCSV() {
         if(todosLancamentos.length === 0) return alert("Não há dados para exportar.");
-        let csvContent = "Data e Hora;Tipo;Catego
+        let csvContent = "Data e Hora;Tipo;Categoria;Descricao;Valor (R$)\n";
+        todosLancamentos.forEach(l => {
+            const dataStr = l.dataHora || '';
+            const valorStr = (l.valor || 0).toFixed(2).replace('.', ',');
+            csvContent += `${dataStr};${l.tipo};${l.categoria};${l.descricao};${valorStr}\n`;
+        });
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `99_lucro_facil_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    }
+
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    init();
+</script>
+</body>
+</html>
