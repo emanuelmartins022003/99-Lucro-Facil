@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#121212">
+    <meta name="theme-color" content="#0a0a0a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>99 Lucro Fácil</title>
     <style>
         :root {
-            --bg: #121212;
-            --surface: #1e1e1e;
-            --surface-light: #2c2c2e;
-            --text: #f5f5f5;
-            --text-muted: #8e8e93;
-            --primary: #34c759;
-            --danger: #ff453a;
-            --border: #38383a;
+            --bg: #09090b;
+            --surface: #18181b;
+            --surface-light: #27272a;
+            --primary: #facc15; /* Amarelo 99 */
+            --primary-text: #000000;
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --green: #10b981;
+            --green-bg: rgba(16, 185, 129, 0.15);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.15);
+            --border: #27272a;
         }
         
         * { 
@@ -29,178 +33,395 @@
         body { 
             background-color: var(--bg); 
             color: var(--text); 
-            height: 100vh;
+            min-height: 100vh;
+            padding-bottom: 100px; /* Espaço para o menu flutuante */
+        }
+
+        /* Cabeçalho */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 16px 10px 16px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            background: var(--primary);
+            color: var(--primary-text);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: 800;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .logo-icon span { font-size: 8px; margin-top: -2px; }
+        
+        .logo-text { font-weight: 600; font-size: 18px; }
+        
+        .menu-icon { color: var(--text); font-size: 24px; }
+
+        /* Área Principal */
+        .container { padding: 0 16px; }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            margin-top: 10px;
+        }
+
+        .hero-title {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        /* Botões e Status (Linha do topo) */
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .pill-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .pill-btn.status { border-color: var(--green); color: var(--text); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+        .btn-yellow {
+            background: var(--primary);
+            color: var(--primary-text);
+            border: none;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            margin-left: auto;
+            cursor: pointer;
+        }
+
+        /* Cartão Principal Escuro */
+        .main-card {
+            background: linear-gradient(145deg, #18181b 0%, #09090b 100%);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 16px;
+            position: relative;
             overflow: hidden;
         }
 
-        header {
-            padding: 16px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg);
-            z-index: 10;
+        /* Efeito de luz no fundo do cartão */
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: -50px; right: -50px;
+            width: 150px; height: 150px;
+            background: var(--primary);
+            filter: blur(80px);
+            opacity: 0.1;
+            border-radius: 50%;
         }
 
-        main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            padding-bottom: 90px;
-        }
-
-        .hidden { display: none !important; }
-
-        .card { 
-            background: var(--surface); 
-            border-radius: 16px; 
-            padding: 20px; 
-            margin-bottom: 16px; 
-            border: 1px solid var(--border);
-        }
-
-        h2 { font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
-        
-        .input-group { margin-bottom: 16px; }
-        label { display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-muted); font-weight: 500; }
-        
-        input, select { 
-            width: 100%; 
-            padding: 16px; 
-            border-radius: 12px; 
-            border: 1px solid var(--border); 
-            background: var(--surface-light); 
-            color: var(--text); 
-            font-size: 16px;
-            appearance: none;
-        }
-
-        input:focus, select:focus { outline: none; border-color: var(--primary); }
-
-        button { 
-            width: 100%; 
-            padding: 16px; 
-            border-radius: 12px; 
-            border: none; 
-            font-size: 16px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: opacity 0.2s;
-        }
-        button:active { opacity: 0.8; }
-        
-        .btn-primary { background: var(--primary); color: #000; }
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-outline { background: transparent; border: 1px solid var(--text-muted); color: var(--text); }
-
-        .summary-row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 12px 0; 
-            border-bottom: 1px solid var(--border); 
-            font-size: 1rem;
-        }
-        .summary-row:last-child { border-bottom: none; }
-        .summary-row.total { font-weight: 700; font-size: 1.3rem; padding-top: 16px; }
-        
-        .text-green { color: var(--primary); }
-        .text-red { color: var(--danger); }
-
-        .list-item { 
-            display: flex; 
-            justify-content: space-between; 
+        .card-label {
+            display: flex;
             align-items: center;
-            padding: 12px 0; 
-            border-bottom: 1px solid var(--border); 
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
         }
+
+        .card-title {
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-dark {
+            background: var(--surface-light);
+            color: var(--text);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .link-text { color: var(--text); font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 4px;}
+
+        /* Área de Saldo (Dentro do cartão quando ativo) */
+        .balance-section { margin-top: 24px; }
+        .balance-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .balance-value { font-size: 36px; font-weight: 700; color: var(--primary); display: flex; align-items: baseline; gap: 4px; }
+        .balance-value small { font-size: 20px; }
+        .margin-text { font-size: 13px; color: var(--text-muted); margin-top: 4px; margin-bottom: 16px; }
+        
+        .progress-bar { height: 4px; background: var(--surface-light); border-radius: 2px; width: 100%; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; border-radius: 2px; transition: width 0.3s; }
+
+        /* Cartões de Receita/Despesa */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 16px;
+        }
+
+        .stat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .stat-title { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        .stat-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; }
+        .icon-green { background: var(--green-bg); color: var(--green); }
+        .icon-red { background: var(--red-bg); color: var(--red); }
+        
+        .stat-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .stat-desc { font-size: 11px; color: var(--text-muted); }
+
+        /* Formulários (Aba Lançar) */
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); font-weight: 500; }
+        input, select { 
+            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid var(--border); 
+            background: var(--surface); color: var(--text); font-size: 16px; appearance: none;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        
+        .btn-full { 
+            width: 100%; padding: 16px; border-radius: 12px; border: none; font-size: 16px; 
+            font-weight: 700; cursor: pointer; background: var(--primary); color: var(--primary-text); margin-top: 8px;
+        }
+
+        /* Listas */
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
         .list-item:last-child { border-bottom: none; }
         .item-info { flex: 1; }
-        .item-desc { font-weight: 500; display: block; font-size: 0.95rem; margin-bottom: 4px;}
-        .item-cat { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .item-val { font-weight: 600; font-size: 1rem; }
+        .item-desc { font-weight: 500; display: block; font-size: 14px; margin-bottom: 4px;}
+        .item-cat { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        .item-val { font-weight: 600; font-size: 15px; }
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
 
+        /* Menu Flutuante Inferior */
         .bottom-nav {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: #1c1c1e;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 400px;
+            background: #18181b;
             display: flex;
-            justify-content: space-around;
-            padding: 10px 0 25px 0;
-            border-top: 1px solid var(--border);
+            justify-content: space-between;
+            padding: 8px;
+            border-radius: 100px;
+            border: 1px solid #27272a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             z-index: 100;
         }
 
         .nav-item {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 4px;
+            padding: 10px 0;
             color: var(--text-muted);
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-decoration: none;
-            transition: color 0.2s;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 100px;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; pointer-events: none; }
+        .nav-item.active { background: var(--primary); color: var(--primary-text); }
+        .nav-icon { width: 20px; height: 20px; fill: currentColor; }
 
-        .filter-dates { display: flex; gap: 12px; }
-        .filter-dates .input-group { flex: 1; }
+        .hidden { display: none !important; }
+        
+        /* Utilitários */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mb-16 { margin-bottom: 16px; }
     </style>
 </head>
 <body>
 
-    <header>🚗 99 Lucro Fácil</header>
+    <!-- Cabeçalho Fixo -->
+    <header class="top-header">
+        <div class="logo-container">
+            <div class="logo-icon">99<span>—</span></div>
+            <div class="logo-text">99 Lucro Fácil</div>
+        </div>
+        <div class="menu-icon">☰</div>
+    </header>
 
-    <main>
-        <!-- ABA OPERAÇÃO -->
-        <div id="view-operacao">
-            <div class="card" id="painel-controle">
-                <h2>Status do Período</h2>
-                
-                <div id="status-ativo" class="hidden">
-                    <p style="margin-bottom: 16px; color: var(--text-muted); font-size: 0.9rem;">
-                        Iniciado em: <strong id="data-inicio"></strong>
-                    </p>
-                    <div class="summary-row">
-                        <span>Ganhos</span> <span class="text-green" id="res-ganhos">R$ 0,00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Despesas</span> <span class="text-red" id="res-despesas">R$ 0,00</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>Lucro Líquido</span> <span id="res-lucro">R$ 0,00</span>
-                    </div>
-                    <button class="btn-danger" style="margin-top: 20px;" onclick="encerrarPeriodo()">Encerrar Período</button>
+    <div class="container">
+        
+        <!-- ================= TELA: INÍCIO ================= -->
+        <div id="view-inicio">
+            <div class="subtitle">CONTROLE DE CORRIDAS • <span id="data-hoje"></span></div>
+            <div class="hero-title">Veja o que sobrou<br>de verdade.</div>
+
+            <div class="action-row">
+                <div class="pill-btn">
+                    ☀️ Claro
                 </div>
-                
-                <div id="status-inativo">
-                    <p style="margin-bottom: 16px; color: var(--text-muted); font-size: 0.9rem;">
-                        Nenhum período em andamento. Inicie a contagem ao começar a rodar.
-                    </p>
-                    <button class="btn-primary" onclick="iniciarPeriodo()">Iniciar Contagem</button>
+                <div class="pill-btn status" id="status-pill">
+                    <div class="status-dot"></div>
+                    <span id="status-text">Nenhum período aberto</span>
                 </div>
             </div>
 
-            <div class="card" id="form-lancamento" style="display: none;">
-                <h2>Novo Lançamento</h2>
+            <!-- Cartão Principal -->
+            <div class="main-card" id="painel-controle">
+                <!-- Se NÃO tiver período ativo -->
+                <div id="status-inativo">
+                    <div class="card-label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        RESUMO DO MOMENTO
+                    </div>
+                    <div class="card-title">Sem período aberto no momento</div>
+                    <div class="card-desc">Quando sair para rodar, abra um período para enxergar o resultado daquela rodada com mais precisão.</div>
+                    <div class="card-actions">
+                        <button class="btn-dark" onclick="iniciarPeriodo()">
+                            🕒 Abrir um período
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Se TIVER período ativo -->
+                <div id="status-ativo" class="hidden">
+                    <div class="flex-between mb-16">
+                        <div class="card-label">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            PERÍODO EM ANDAMENTO
+                        </div>
+                        <button class="btn-dark" style="padding: 6px 12px; font-size: 12px; color: var(--red); background: transparent; border: 1px solid var(--red);" onclick="encerrarPeriodo()">Encerrar</button>
+                    </div>
+                    
+                    <div class="balance-section">
+                        <div class="balance-label">SALDO ACUMULADO</div>
+                        <div class="balance-value"><small>R$</small> <span id="res-lucro">0,00</span></div>
+                        <div class="margin-text" id="res-margem">0% de margem</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="res-progresso" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button class="btn-dark" style="width: 100%; justify-content: center;" onclick="switchTab('lancar')">
+                            + Adicionar Lançamento
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards de Estatísticas -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Receitas</span>
+                        <div class="stat-icon icon-green">↗</div>
+                    </div>
+                    <div class="stat-value" id="card-receitas">R$ 0,00</div>
+                    <div class="stat-desc" id="card-receitas-desc">0 lançamentos</div>
+                </div>
                 
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Despesas</span>
+                        <div class="stat-icon icon-red">↘</div>
+                    </div>
+                    <div class="stat-value" id="card-despesas">R$ 0,00</div>
+                    <div class="stat-desc" id="card-despesas-desc">0 lançamentos</div>
+                </div>
+            </div>
+
+            <!-- Últimos lançamentos -->
+            <div class="main-card" style="padding: 20px;">
+                <div class="flex-between mb-16">
+                    <h2 style="font-size: 16px;">Últimos lançamentos</h2>
+                </div>
+                <div id="ultimos-lancamentos"></div>
+            </div>
+        </div>
+
+        <!-- ================= TELA: LANÇAR ================= -->
+        <div id="view-lancar" class="hidden">
+            <div class="hero-title" style="margin-bottom: 24px;">Novo Lançamento</div>
+            
+            <div class="main-card">
                 <div class="input-group">
-                    <label>Tipo</label>
+                    <label>Tipo de Lançamento</label>
                     <select id="tipo-lancamento" onchange="toggleCategoria()">
                         <option value="ganho">Ganho (App 99)</option>
                         <option value="despesa">Despesa</option>
                     </select>
                 </div>
                 
-                <div class="input-group" id="div-categoria" style="display: none;">
-                    <label>Categoria</label>
+                <div class="input-group hidden" id="div-categoria">
+                    <label>Categoria da Despesa</label>
                     <select id="categoria-lancamento">
                         <option value="Combustível">Combustível</option>
                         <option value="Manutenção">Manutenção</option>
@@ -221,31 +442,28 @@
                     <input type="text" id="valor-lancamento" inputmode="decimal" placeholder="0,00">
                 </div>
                 
-                <button class="btn-primary" onclick="adicionarLancamento()">Adicionar Lançamento</button>
-            </div>
-
-            <div class="card" id="lista-lancamentos" style="display: none;">
-                <h2>Lançamentos Atuais</h2>
-                <div id="itens-periodo"></div>
+                <button class="btn-full" onclick="adicionarLancamento()">Salvar Lançamento</button>
             </div>
         </div>
 
-        <!-- ABA HISTÓRICO -->
-        <div id="view-historico" class="hidden">
-            <div class="card">
-                <h2>Filtros</h2>
-                <div class="filter-dates">
-                    <div class="input-group">
+        <!-- ================= TELA: ANÁLISE ================= -->
+        <div id="view-analise" class="hidden">
+            <div class="hero-title" style="margin-bottom: 24px;">Análise</div>
+            
+            <div class="main-card">
+                <h2 style="font-size: 16px; margin-bottom: 16px;">Filtros</h2>
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
                         <label>De</label>
                         <input type="date" id="filtro-inicio">
                     </div>
-                    <div class="input-group">
+                    <div class="input-group" style="flex: 1;">
                         <label>Até</label>
                         <input type="date" id="filtro-fim">
                     </div>
                 </div>
                 <div class="input-group">
-                    <label>Categoria</label>
+                    <label>Categoria (Despesas)</label>
                     <select id="filtro-categoria">
                         <option value="Todas">Todas as Categorias</option>
                         <option value="Combustível">Combustível</option>
@@ -256,71 +474,102 @@
                         <option value="Outros">Outros</option>
                     </select>
                 </div>
-                <button class="btn-primary" onclick="filtrarHistorico()">Filtrar</button>
+                <button class="btn-full" onclick="filtrarHistorico()">Filtrar Período</button>
             </div>
 
-            <div class="card">
-                <h2>Resumo do Filtro</h2>
-                <div class="summary-row">
-                    <span>Ganhos</span> <span class="text-green" id="hist-ganhos">R$ 0,00</span>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Ganhos (Filtro)</span>
+                    </div>
+                    <div class="stat-value text-green" id="hist-ganhos">R$ 0,00</div>
                 </div>
-                <div class="summary-row">
-                    <span>Despesas</span> <span class="text-red" id="hist-despesas">R$ 0,00</span>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Despesas (Filtro)</span>
+                    </div>
+                    <div class="stat-value text-red" id="hist-despesas">R$ 0,00</div>
                 </div>
-                <div class="summary-row total">
-                    <span>Lucro Líquido</span> <span id="hist-lucro">R$ 0,00</span>
-                </div>
-                
-                <button class="btn-outline" style="margin-top: 20px;" onclick="exportarCSV()">📥 Exportar Planilha (CSV)</button>
             </div>
 
-            <div class="card">
-                <h2>Detalhes</h2>
+            <div class="main-card">
+                <h2 style="font-size: 16px; margin-bottom: 16px;">Lançamentos do Filtro</h2>
                 <div id="lista-historico"></div>
             </div>
         </div>
-    </main>
 
-    <!-- Navegação Inferior -->
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('operacao')" id="nav-operacao">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-            Operação
+        <!-- ================= TELA: BACKUP ================= -->
+        <div id="view-backup" class="hidden">
+            <div class="hero-title" style="margin-bottom: 24px;">Backup de Dados</div>
+            
+            <div class="main-card">
+                <div class="card-title" style="font-size: 20px;">Guarde seus dados</div>
+                <div class="card-desc">Exporte todos os seus lançamentos (desde o primeiro dia) em formato de planilha. Você poderá abrir no Excel, Google Sheets ou guardar como cópia de segurança.</div>
+                
+                <button class="btn-full" onclick="exportarCSV()" style="margin-top: 16px; background: var(--surface-light); color: var(--text);">
+                    📥 Baixar Planilha (CSV)
+                </button>
+            </div>
+
+            <div class="main-card">
+                <div class="card-title" style="font-size: 20px; color: var(--red);">Zona de Perigo</div>
+                <div class="card-desc">Isso apagará todos os dados salvos no seu celular. Não há como desfazer.</div>
+                <button class="btn-full" onclick="limparTudo()" style="margin-top: 16px; background: transparent; border: 1px solid var(--red); color: var(--red);">
+                    Apagar Todos os Dados
+                </button>
+            </div>
         </div>
-        <div class="nav-item" onclick="switchTab('historico')" id="nav-historico">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-            Histórico
+
+    </div>
+
+    <!-- Menu Flutuante Inferior -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('inicio')" id="nav-inicio">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+            Início
+        </div>
+        <div class="nav-item" onclick="switchTab('lancar')" id="nav-lancar">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+            Lançar
+        </div>
+        <div class="nav-item" onclick="switchTab('analise')" id="nav-analise">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>
+            Análise
+        </div>
+        <div class="nav-item" onclick="switchTab('backup')" id="nav-backup">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"/></svg>
+            Backup
         </div>
     </nav>
 
 <script>
-    // Carrega os dados tentando evitar erros se o armazenamento estiver corrompido
+    // Pegar data de hoje
+    const dataHoje = new Date();
+    document.getElementById('data-hoje').innerText = dataHoje.toLocaleDateString('pt-BR');
+
     let periodoAtivo = null;
     let todosLancamentos = [];
+    
     try {
         const p = localStorage.getItem('periodoAtivo');
         const l = localStorage.getItem('todosLancamentos');
         if (p) periodoAtivo = JSON.parse(p);
         if (l) todosLancamentos = JSON.parse(l);
-    } catch (e) {
-        console.error("Erro ao carregar dados", e);
+    } catch (e) { console.error(e); }
+
+    function init() { 
+        atualizarInterface(); 
     }
 
-    function init() { atualizarInterface(); }
-
     function switchTab(tab) {
-        document.getElementById('view-operacao').classList.add('hidden');
-        document.getElementById('view-historico').classList.add('hidden');
-        document.getElementById('nav-operacao').classList.remove('active');
-        document.getElementById('nav-historico').classList.remove('active');
+        document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         
-        if(tab === 'operacao') {
-            document.getElementById('view-operacao').classList.remove('hidden');
-            document.getElementById('nav-operacao').classList.add('active');
-        } else {
-            document.getElementById('view-historico').classList.remove('hidden');
-            document.getElementById('nav-historico').classList.add('active');
-            
+        document.getElementById(`view-${tab}`).classList.remove('hidden');
+        document.getElementById(`nav-${tab}`).classList.add('active');
+
+        if(tab === 'inicio') atualizarInterface();
+        if(tab === 'analise') {
             const hoje = new Date().toISOString().split('T')[0];
             if(!document.getElementById('filtro-inicio').value) {
                 document.getElementById('filtro-inicio').value = hoje;
@@ -334,10 +583,11 @@
         periodoAtivo = { id: Date.now(), dataInicio: new Date().toLocaleString('pt-BR') };
         salvarDados();
         atualizarInterface();
+        switchTab('inicio');
     }
 
     function encerrarPeriodo() {
-        if(confirm("Deseja encerrar e salvar este período no histórico?")) {
+        if(confirm("Deseja encerrar este período e salvar no histórico?")) {
             periodoAtivo = null;
             salvarDados();
             atualizarInterface();
@@ -346,85 +596,108 @@
 
     function toggleCategoria() {
         const tipo = document.getElementById('tipo-lancamento').value;
-        document.getElementById('div-categoria').style.display = tipo === 'despesa' ? 'block' : 'none';
+        document.getElementById('div-categoria').classList.toggle('hidden', tipo !== 'despesa');
     }
 
     function adicionarLancamento() {
         const tipo = document.getElementById('tipo-lancamento').value;
-        
-        // Correção para aceitar vírgula no celular
-        let valorStr = document.getElementById('valor-lancamento').value;
-        valorStr = valorStr.replace(',', '.');
+        let valorStr = document.getElementById('valor-lancamento').value.replace(',', '.');
         const valor = parseFloat(valorStr);
-        
         const desc = document.getElementById('desc-lancamento').value || (tipo === 'ganho' ? 'Corrida 99' : 'Despesa');
         const cat = tipo === 'despesa' ? document.getElementById('categoria-lancamento').value : 'Ganho';
 
-        if(isNaN(valor) || valor <= 0) { 
-            return alert("Insira um valor válido."); 
+        if(isNaN(valor) || valor <= 0) return alert("Insira um valor válido.");
+
+        if(!periodoAtivo) {
+            alert("Você precisa iniciar um período antes de lançar!");
+            return switchTab('inicio');
         }
 
         todosLancamentos.push({
-            id: Date.now(), 
-            periodoId: periodoAtivo.id, 
-            dataHora: new Date().toLocaleString('pt-BR'),
-            dataFiltro: new Date().toISOString().split('T')[0], 
-            tipo: tipo, 
-            categoria: cat, 
-            descricao: desc, 
-            valor: valor
+            id: Date.now(), periodoId: periodoAtivo.id, dataHora: new Date().toLocaleString('pt-BR'),
+            dataFiltro: new Date().toISOString().split('T')[0], tipo: tipo, categoria: cat, descricao: desc, valor: valor
         });
 
         salvarDados();
         document.getElementById('valor-lancamento').value = '';
         document.getElementById('desc-lancamento').value = '';
-        atualizarInterface();
+        alert("Lançamento salvo!");
+        switchTab('inicio');
     }
 
     function salvarDados() {
         try {
             localStorage.setItem('periodoAtivo', JSON.stringify(periodoAtivo));
             localStorage.setItem('todosLancamentos', JSON.stringify(todosLancamentos));
-        } catch(e) { console.error("Erro ao salvar", e); }
+        } catch(e) { console.error(e); }
     }
 
     function atualizarInterface() {
+        const statusText = document.getElementById('status-text');
+        const pillStatus = document.getElementById('status-pill');
+        
         if(periodoAtivo) {
             document.getElementById('status-ativo').classList.remove('hidden');
             document.getElementById('status-inativo').classList.add('hidden');
-            document.getElementById('form-lancamento').style.display = 'block';
-            document.getElementById('lista-lancamentos').style.display = 'block';
-            document.getElementById('data-inicio').innerText = periodoAtivo.dataInicio;
-            calcularResumoAtivo();
-            renderizarListaAtiva();
+            
+            statusText.innerText = 'Período em andamento';
+            
+            let ganhos = 0, despesas = 0, numGanhos = 0, numDespesas = 0;
+            
+            const ativos = todosLancamentos.filter(l => l.periodoId === periodoAtivo.id);
+            ativos.forEach(l => {
+                if(l.tipo === 'ganho') { ganhos += l.valor; numGanhos++; }
+                else { despesas += l.valor; numDespesas++; }
+            });
+
+            const lucro = ganhos - despesas;
+            const margem = ganhos > 0 ? (lucro / ganhos) * 100 : 0;
+
+            document.getElementById('res-lucro').innerText = formatarMoeda(lucro).replace('R$', '').trim();
+            document.getElementById('res-margem').innerText = `${margem.toFixed(1).replace('.', ',')}% de margem`;
+            
+            const progresso = Math.max(0, Math.min(100, margem));
+            document.getElementById('res-progresso').style.width = `${progresso}%`;
+
+            document.getElementById('card-receitas').innerText = formatarMoeda(ganhos);
+            document.getElementById('card-receitas-desc').innerText = `${numGanhos} lançamentos`;
+            
+            document.getElementById('card-despesas').innerText = formatarMoeda(despesas);
+            document.getElementById('card-despesas-desc').innerText = `${numDespesas} lançamentos`;
+
+            renderizarUltimos(ativos);
+
         } else {
             document.getElementById('status-ativo').classList.add('hidden');
             document.getElementById('status-inativo').classList.remove('hidden');
-            document.getElementById('form-lancamento').style.display = 'none';
-            document.getElementById('lista-lancamentos').style.display = 'none';
+            statusText.innerText = 'Nenhum período aberto';
+            
+            document.getElementById('card-receitas').innerText = 'R$ 0,00';
+            document.getElementById('card-receitas-desc').innerText = `0 lançamentos`;
+            document.getElementById('card-despesas').innerText = 'R$ 0,00';
+            document.getElementById('card-despesas-desc').innerText = `0 lançamentos`;
+
+            renderizarUltimos(todosLancamentos);
         }
     }
 
-    function calcularResumoAtivo() {
-        let ganhos = 0, despesas = 0;
-        todosLancamentos.filter(l => l.periodoId === periodoAtivo.id).forEach(l => {
-            if(l.tipo === 'ganho') ganhos += l.valor; else despesas += l.valor;
-        });
-        atualizarResumoDOM('res-ganhos', 'res-despesas', 'res-lucro', ganhos, despesas);
-    }
-
-    function renderizarListaAtiva() {
-        const container = document.getElementById('itens-periodo');
+    function renderizarUltimos(lista) {
+        const container = document.getElementById('ultimos-lancamentos');
         container.innerHTML = '';
-        const ativos = todosLancamentos.filter(l => l.periodoId === periodoAtivo.id).reverse();
-        if(ativos.length === 0) container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem;">Nenhum lançamento ainda.</p>';
         
-        ativos.forEach(l => {
+        const ultimos = [...lista].sort((a,b) => b.id - a.id).slice(0, 5);
+        
+        if(ultimos.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:12px; padding: 20px 0;">Nenhum lançamento recente.</p>';
+            return;
+        }
+
+        ultimos.forEach(l => {
             container.innerHTML += `
                 <div class="list-item">
                     <div class="item-info">
                         <span class="item-desc">${l.descricao}</span>
-                        <span class="item-cat">${l.categoria}</span>
+                        <span class="item-cat">${l.categoria} • ${l.dataHora.split(' ')[0]}</span>
                     </div>
                     <span class="item-val ${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
                         ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
@@ -450,23 +723,24 @@
 
         let ganhos = 0, despesas = 0;
         filtrados.forEach(l => { if(l.tipo === 'ganho') ganhos += l.valor; else despesas += l.valor; });
-        atualizarResumoDOM('hist-ganhos', 'hist-despesas', 'hist-lucro', ganhos, despesas);
+        
+        document.getElementById('hist-ganhos').innerText = formatarMoeda(ganhos);
+        document.getElementById('hist-despesas').innerText = formatarMoeda(despesas);
 
         const container = document.getElementById('lista-historico');
         container.innerHTML = '';
         
         if(paraExibir.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem;">Nenhum lançamento encontrado.</p>';
+            container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:13px;">Nenhum lançamento encontrado.</p>';
             return;
         }
 
-        paraExibir.reverse().forEach(l => {
-            const dataExibicao = l.dataHora ? l.dataHora.split(' ')[0] : (l.dataFiltro || '');
+        paraExibir.sort((a,b) => b.id - a.id).forEach(l => {
             container.innerHTML += `
                 <div class="list-item">
                     <div class="item-info">
                         <span class="item-desc">${l.descricao}</span>
-                        <span class="item-cat">${l.categoria} • ${dataExibicao}</span>
+                        <span class="item-cat">${l.categoria} • ${l.dataHora.split(' ')[0]}</span>
                     </div>
                     <span class="item-val ${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
                         ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
@@ -475,28 +749,28 @@
         });
     }
 
-    function atualizarResumoDOM(idGanho, idDespesa, idLucro, ganhos, despesas) {
-        const lucro = ganhos - despesas;
-        document.getElementById(idGanho).innerText = formatarMoeda(ganhos);
-        document.getElementById(idDespesa).innerText = formatarMoeda(despesas);
-        const elLucro = document.getElementById(idLucro);
-        elLucro.innerText = formatarMoeda(lucro);
-        elLucro.className = lucro >= 0 ? 'text-green' : 'text-red';
-    }
-
     function exportarCSV() {
         if(todosLancamentos.length === 0) return alert("Não há dados para exportar.");
         let csvContent = "Data e Hora;Tipo;Categoria;Descricao;Valor (R$)\n";
         todosLancamentos.forEach(l => {
-            const dataStr = l.dataHora || '';
             const valorStr = (l.valor || 0).toFixed(2).replace('.', ',');
-            csvContent += `${dataStr};${l.tipo};${l.categoria};${l.descricao};${valorStr}\n`;
+            csvContent += `${l.dataHora};${l.tipo};${l.categoria};${l.descricao};${valorStr}\n`;
         });
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `99_lucro_facil_${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `99_lucro_facil_backup_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
+    }
+
+    function limparTudo() {
+        if(confirm("⚠️ CUIDADO: Isso apagará TODOS os seus dados. Tem certeza?")) {
+            localStorage.clear();
+            periodoAtivo = null;
+            todosLancamentos = [];
+            atualizarInterface();
+            alert("Dados apagados com sucesso.");
+        }
     }
 
     function formatarMoeda(valor) {
