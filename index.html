@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>99 Lucro Fácil</title>
+    <style>
+        :root {
+            --bg: #121212; --card: #1e1e1e; --text: #e0e0e0;
+            --primary: #00d26a; --danger: #ff4d4d; --border: #333;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 20px; }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        
+        /* Navegação em Abas */
+        .tabs { display: flex; margin-bottom: 20px; background: var(--card); border-radius: 8px; overflow: hidden; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; opacity: 0.6; transition: 0.3s; }
+        .tab.active { opacity: 1; background: var(--primary); color: #000; }
+        
+        /* Cards e Formulários */
+        .card { background: var(--card); border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
+        h2, h3 { margin-bottom: 15px; font-size: 1.1rem; }
+        
+        .input-group { margin-bottom: 10px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 5px; opacity: 0.8; }
+        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: #000; color: #fff; font-size: 1rem; }
+        
+        button { width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; margin-top: 5px; }
+        .btn-primary { background: var(--primary); color: #000; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid var(--text); color: var(--text); }
+        
+        /* Resumos */
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .summary-row.total { font-weight: bold; font-size: 1.2rem; border-bottom: none; padding-top: 15px; }
+        .text-green { color: var(--primary); }
+        .text-red { color: var(--danger); }
+        
+        /* Listas */
+        .list-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .list-item:last-child { border-bottom: none; }
+        .item-desc { font-weight: bold; display: block; }
+        .item-cat { font-size: 0.75rem; opacity: 0.6; text-transform: uppercase; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align: center; margin-bottom: 20px;">🚗 99 Lucro Fácil</h1>
+
+    <!-- Abas -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('operacao')">Operação Atual</div>
+        <div class="tab" onclick="switchTab('historico')">Histórico</div>
+    </div>
+
+    <!-- ABA OPERAÇÃO -->
+    <div id="tab-operacao">
+        
+        <!-- Painel de Controle -->
+        <div class="card" id="painel-controle">
+            <h2>Status do Período</h2>
+            <div id="status-ativo" class="hidden">
+                <p style="margin-bottom: 10px;">Período iniciado em: <strong id="data-inicio"></strong></p>
+                <div class="summary-row">
+                    <span>Ganhos (99)</span> <span class="text-green" id="res-ganhos">R$ 0,00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Despesas Totais</span> <span class="text-red" id="res-despesas">R$ 0,00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Lucro Líquido</span> <span id="res-lucro">R$ 0,00</span>
+                </div>
+                <button class="btn-danger" style="margin-top: 15px;" onclick="encerrarPeriodo()">Encerrar e Salvar Período</button>
+            </div>
+            <div id="status-inativo">
+                <p style="margin-bottom: 15px; opacity: 0.8;">Nenhum período em andamento. Inicie a contagem quando começar a rodar.</p>
+                <button class="btn-primary" onclick="iniciarPeriodo()">Iniciar Contagem</button>
+            </div>
+        </div>
+
+        <!-- Formulário de Lançamento -->
+        <div class="card" id="form-lancamento" style="display: none;">
+            <h2>Novo Lançamento</h2>
+            <div class="input-group">
+                <label>Tipo</label>
+                <select id="tipo-lancamento" onchange="toggleCategoria()">
+                    <option value="ganho">Ganho (App 99)</option>
+                    <option value="despesa">Despesa</option>
+                </select>
+            </div>
+            <div class="input-group" id="div-categoria" style="display: none;">
+                <label>Categoria da Despesa</label>
+                <select id="categoria-lancamento">
+                    <option value="Combustível">Combustível</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Limpeza">Limpeza</option>
+                    <option value="Documentação">Documentação</option>
+                    <option value="Seguro">Seguro</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Descrição (opcional)</label>
+                <input type="text" id="desc-lancamento" placeholder="Ex: Posto Ipiranga, Troca de óleo...">
+            </div>
+            <div class="input-group">
+                <label>Valor (R$)</label>
+                <input type="number" id="valor-lancamento" step="0.01" placeholder="0.00">
+            </div>
+            <button class="btn-primary" onclick="adicionarLancamento()">Adicionar</button>
+        </div>
+
+        <!-- Lista de Lançamentos do Período -->
+        <div class="card" id="lista-lancamentos" style="display: none;">
+            <h3>Lançamentos deste Período</h3>
+            <div id="itens-periodo"></div>
+        </div>
+    </div>
+
+    <!-- ABA HISTÓRICO -->
+    <div id="tab-historico" class="hidden">
+        <div class="card">
+            <h2>Filtros</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Data Inicial</label>
+                    <input type="date" id="filtro-inicio">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Data Final</label>
+                    <input type="date" id="filtro-fim">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Filtrar Categoria (Despesas)</label>
+                <select id="filtro-categoria">
+                    <option value="Todas">Todas as Categorias</option>
+                    <option value="Combustível">Combustível</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Limpeza">Limpeza</option>
+                    <option value="Documentação">Documentação</option>
+                    <option value="Seguro">Seguro</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="filtrarHistorico()">Filtrar</button>
+        </div>
+
+        <div class="card">
+            <h2>Resultados</h2>
+            <div class="summary-row">
+                <span>Ganhos no Filtro</span> <span class="text-green" id="hist-ganhos">R$ 0,00</span>
+            </div>
+            <div class="summary-row">
+                <span>Despesas no Filtro</span> <span class="text-red" id="hist-despesas">R$ 0,00</span>
+            </div>
+            <div class="summary-row total">
+                <span>Lucro Líquido</span> <span id="hist-lucro">R$ 0,00</span>
+            </div>
+            
+            <button class="btn-outline" style="margin-top: 20px;" onclick="exportarCSV()">📥 Exportar Dados (CSV/Excel)</button>
+        </div>
+
+        <div class="card">
+            <h3>Lançamentos Históricos</h3>
+            <div id="lista-historico"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Variáveis de Estado
+    let periodoAtivo = JSON.parse(localStorage.getItem('periodoAtivo')) || null;
+    let todosLancamentos = JSON.parse(localStorage.getItem('todosLancamentos')) || [];
+
+    // Inicialização
+    function init() {
+        atualizarInterface();
+    }
+
+    // Controle de Abas
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#tab-operacao, #tab-historico').forEach(t => t.classList.add('hidden'));
+        
+        if(tab === 'operacao') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('tab-operacao').classList.remove('hidden');
+        } else {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('tab-historico').classList.remove('hidden');
+            // Preencher datas padrão para o filtro
+            const hoje = new Date().toISOString().split('T')[0];
+            if(!document.getElementById('filtro-inicio').value) {
+                document.getElementById('filtro-inicio').value = hoje;
+                document.getElementById('filtro-fim').value = hoje;
+            }
+        }
+    }
+
+    // Iniciar Período Manualmente
+    function iniciarPeriodo() {
+        periodoAtivo = {
+            id: Date.now(),
+            dataInicio: new Date().toLocaleString('pt-BR')
+        };
+        salvarDados();
+        atualizarInterface();
+    }
+
+    // Encerrar Período
+    function encerrarPeriodo() {
+        if(confirm("Deseja realmente encerrar este período? Ele irá para o histórico.")) {
+            periodoAtivo = null;
+            salvarDados();
+            atualizarInterface();
+        }
+    }
+
+    // Alternar campo de categoria
+    function toggleCategoria() {
+        const tipo = document.getElementById('tipo-lancamento').value;
+        document.getElementById('div-categoria').style.display = tipo === 'despesa' ? 'block' : 'none';
+    }
+
+    // Adicionar Lançamento
+    function adicionarLancamento() {
+        const tipo = document.getElementById('tipo-lancamento').value;
+        const valor = parseFloat(document.getElementById('valor-lancamento').value);
+        const desc = document.getElementById('desc-lancamento').value || (tipo === 'ganho' ? 'Corrida 99' : 'Despesa');
+        const cat = tipo === 'despesa' ? document.getElementById('categoria-lancamento').value : 'Ganho';
+
+        if(isNaN(valor) || valor <= 0) {
+            alert("Por favor, insira um valor válido.");
+            return;
+        }
+
+        const novoLancamento = {
+            id: Date.now(),
+            periodoId: periodoAtivo.id,
+            dataHora: new Date().toLocaleString('pt-BR'),
+            dataFiltro: new Date().toISOString().split('T')[0],
+            tipo: tipo,
+            categoria: cat,
+            descricao: desc,
+            valor: valor
+        };
+
+        todosLancamentos.push(novoLancamento);
+        salvarDados();
+        
+        // Limpar formulário
+        document.getElementById('valor-lancamento').value = '';
+        document.getElementById('desc-lancamento').value = '';
+        
+        atualizarInterface();
+    }
+
+    // Salvar no Navegador (localStorage)
+    function salvarDados() {
+        localStorage.setItem('periodoAtivo', JSON.stringify(periodoAtivo));
+        localStorage.setItem('todosLancamentos', JSON.stringify(todosLancamentos));
+    }
+
+    // Atualizar a Tela
+    function atualizarInterface() {
+        // Atualizar Status
+        if(periodoAtivo) {
+            document.getElementById('status-ativo').classList.remove('hidden');
+            document.getElementById('status-inativo').classList.add('hidden');
+            document.getElementById('form-lancamento').style.display = 'block';
+            document.getElementById('lista-lancamentos').style.display = 'block';
+            document.getElementById('data-inicio').innerText = periodoAtivo.dataInicio;
+            calcularResumoAtivo();
+            renderizarListaAtiva();
+        } else {
+            document.getElementById('status-ativo').classList.add('hidden');
+            document.getElementById('status-inativo').classList.remove('hidden');
+            document.getElementById('form-lancamento').style.display = 'none';
+            document.getElementById('lista-lancamentos').style.display = 'none';
+        }
+    }
+
+    // Calcular Resumo do Período Atual
+    function calcularResumoAtivo() {
+        const lancamentosAtivos = todosLancamentos.filter(l => l.periodoId === periodoAtivo.id);
+        let ganhos = 0, despesas = 0;
+
+        lancamentosAtivos.forEach(l => {
+            if(l.tipo === 'ganho') ganhos += l.valor;
+            else despesas += l.valor;
+        });
+
+        const lucro = ganhos - despesas;
+
+        document.getElementById('res-ganhos').innerText = formatarMoeda(ganhos);
+        document.getElementById('res-despesas').innerText = formatarMoeda(despesas);
+        
+        const elLucro = document.getElementById('res-lucro');
+        elLucro.innerText = formatarMoeda(lucro);
+        elLucro.className = lucro >= 0 ? 'text-green' : 'text-red';
+    }
+
+    // Renderizar Lista do Período Atual
+    function renderizarListaAtiva() {
+        const container = document.getElementById('itens-periodo');
+        container.innerHTML = '';
+        const ativos = todosLancamentos.filter(l => l.periodoId === periodoAtivo.id).reverse();
+
+        ativos.forEach(l => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.innerHTML = `
+                <div>
+                    <span class="item-desc">${l.descricao}</span>
+                    <span class="item-cat">${l.categoria} - ${l.dataHora}</span>
+                </div>
+                <span class="${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
+                    ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
+                </span>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Filtrar Histórico
+    function filtrarHistorico() {
+        const dtInicio = document.getElementById('filtro-inicio').value;
+        const dtFim = document.getElementById('filtro-fim').value;
+        const catFiltro = document.getElementById('filtro-categoria').value;
+
+        let filtrados = todosLancamentos.filter(l => l.periodoId !== (periodoAtivo ? periodoAtivo.id : null));
+
+        // Filtro de data
+        if(dtInicio) filtrados = filtrados.filter(l => l.dataFiltro >= dtInicio);
+        if(dtFim) filtrados = filtrados.filter(l => l.dataFiltro <= dtFim);
+
+        // Filtro de categoria (só afeta despesas)
+        if(catFiltro !== 'Todas') {
+            filtrados = filtrados.filter(l => l.tipo === 'despesa' && l.categoria === catFiltro);
+        }
+
+        // Calcular totais do filtro (para exibição)
+        let ganhos = 0, despesas = 0;
+        // Recalcula ganhos e despesas baseados em todos os itens do período (não apenas o filtro de categoria)
+        let itensNoPeriodo = todosLancamentos.filter(l => l.periodoId !== (periodoAtivo ? periodoAtivo.id : null));
+        if(dtInicio) itensNoPeriodo = itensNoPeriodo.filter(l => l.dataFiltro >= dtInicio);
+        if(dtFim) itensNoPeriodo = itensNoPeriodo.filter(l => l.dataFiltro <= dtFim);
+
+        itensNoPeriodo.forEach(l => {
+            if(l.tipo === 'ganho') ganhos += l.valor;
+            else despesas += l.valor;
+        });
+
+        const lucro = ganhos - despesas;
+
+        document.getElementById('hist-ganhos').innerText = formatarMoeda(ganhos);
+        document.getElementById('hist-despesas').innerText = formatarMoeda(despesas);
+        
+        const elLucro = document.getElementById('hist-lucro');
+        elLucro.innerText = formatarMoeda(lucro);
+        elLucro.className = lucro >= 0 ? 'text-green' : 'text-red';
+
+        // Renderizar lista filtrada
+        const container = document.getElementById('lista-historico');
+        container.innerHTML = '';
+        
+        if(filtrados.length === 0) {
+            container.innerHTML = '<p style="text-align:center; opacity:0.5;">Nenhum lançamento encontrado para este filtro.</p>';
+            return;
+        }
+
+        filtrados.reverse().forEach(l => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.innerHTML = `
+                <div>
+                    <span class="item-desc">${l.descricao}</span>
+                    <span class="item-cat">${l.categoria} - ${l.dataHora}</span>
+                </div>
+                <span class="${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
+                    ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
+                </span>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Exportar para CSV
+    function exportarCSV() {
+        if(todosLancamentos.length === 0) {
+            alert("Não há dados para exportar.");
+            return;
+        }
+
+        let csvContent = "Data e Hora;Tipo;Categoria;Descricao;Valor (R$)\n";
+        
+        todosLancamentos.forEach(l => {
+            const valorFormatado = l.valor.toFixed(2).replace('.', ',');
+            csvContent += `${l.dataHora};${l.tipo};${l.categoria};${l.descricao};${valorFormatado}\n`;
+        });
+
+        // Criar arquivo
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); // \uFEFF ajuda o Excel a ler acentos
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `99_lucro_facil_backup_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Função auxiliar para formatar dinheiro
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Iniciar app
+    init();
+
+</script>
+</body>
+</html>
