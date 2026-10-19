@@ -1,783 +1,364 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>99 Lucro Fácil</title>
-    <style>
-        :root {
-            --bg: #09090b;
-            --surface: #18181b;
-            --surface-light: #27272a;
-            --primary: #facc15; /* Amarelo 99 */
-            --primary-text: #000000;
-            --text: #fafafa;
-            --text-muted: #a1a1aa;
-            --green: #10b981;
-            --green-bg: rgba(16, 185, 129, 0.15);
-            --red: #ef4444;
-            --red-bg: rgba(239, 68, 68, 0.15);
-            --border: #27272a;
-        }
-        
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
-        body { 
-            background-color: var(--bg); 
-            color: var(--text); 
-            min-height: 100vh;
-            padding-bottom: 100px; /* Espaço para o menu flutuante */
-        }
+type View = 'dashboard' | 'lancamentos' | 'analise' | 'backup'
+type Category = 'Manutenção' | 'Documentação' | 'Seguro' | 'Combustível' | 'Limpeza' | 'Outros'
 
-        /* Cabeçalho */
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 16px 10px 16px;
-        }
+type Period = {
+  id: string
+  startDate: string
+  endDate?: string
+  status: 'open' | 'closed'
+}
 
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+type Gain = {
+  id: string
+  periodId: string
+  date: string
+  amount: number
+  note: string
+}
 
-        .logo-icon {
-            background: var(--primary);
-            color: var(--primary-text);
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-weight: 800;
-            font-size: 14px;
-            line-height: 1;
-        }
+type Expense = {
+  id: string
+  periodId: string
+  date: string
+  amount: number
+  description: string
+  category: Category
+}
 
-        .logo-icon span { font-size: 8px; margin-top: -2px; }
-        
-        .logo-text { font-weight: 600; font-size: 18px; }
-        
-        .menu-icon { color: var(--text); font-size: 24px; }
+type Store = {
+  periods: Period[]
+  gains: Gain[]
+  expenses: Expense[]
+}
 
-        /* Área Principal */
-        .container { padding: 0 16px; }
+const STORAGE_KEY = 'rodacerta-store-v1'
+const categories: Category[] = ['Manutenção', 'Documentação', 'Seguro', 'Combustível', 'Limpeza', 'Outros']
+const categoryMeta: Record<Category, { icon: string; color: string }> = {
+  Manutenção: { icon: '⚙', color: '#e4a852' },
+  Documentação: { icon: '▣', color: '#7c8cd6' },
+  Seguro: { icon: '◇', color: '#bd79aa' },
+  Combustível: { icon: '⌁', color: '#e77955' },
+  Limpeza: { icon: '✦', color: '#59a9a1' },
+  Outros: { icon: '＋', color: '#9ba09d' },
+}
 
-        .subtitle {
-            color: var(--text-muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            margin-top: 10px;
-        }
+const today = () => new Date().toISOString().slice(0, 10)
+const makeId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
+const formatMoney = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+const formatDate = (value?: string) => value ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T12:00:00`)).replace('.', '') : '—'
+const formatShortDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${value}T12:00:00`)).replace('.', '')
+const monthName = (value: string) => new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
+const initialStore: Store = { periods: [], gains: [], expenses: [] }
+const viewFromPath = (pathname: string): View => pathname.includes('lancamentos') ? 'lancamentos' : pathname.includes('analise') ? 'analise' : pathname.includes('backup') ? 'backup' : 'dashboard'
 
-        .hero-title {
-            font-size: 28px;
-            font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 20px;
-            letter-spacing: -0.5px;
-        }
+function loadStore(): Store {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return initialStore
+    const parsed = JSON.parse(saved) as Store
+    return { periods: parsed.periods || [], gains: parsed.gains || [], expenses: parsed.expenses || [] }
+  } catch {
+    return initialStore
+  }
+}
 
-        /* Botões e Status (Linha do topo) */
-        .action-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 24px;
-        }
+function isValidBackup(value: unknown): value is Store {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as { periods?: unknown; gains?: unknown; expenses?: unknown }
+  if (!Array.isArray(candidate.periods) || !Array.isArray(candidate.gains) || !Array.isArray(candidate.expenses)) return false
+  const periods = candidate.periods as Period[]
+  const gains = candidate.gains as Gain[]
+  const expenses = candidate.expenses as Expense[]
+  const periodIds = new Set(periods.map((period) => period.id))
+  const validDate = (date: unknown) => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+  return periods.every((period) => period && typeof period.id === 'string' && validDate(period.startDate) && (!period.endDate || validDate(period.endDate)) && (period.status === 'open' || period.status === 'closed'))
+    && gains.every((gain) => gain && typeof gain.id === 'string' && periodIds.has(gain.periodId) && validDate(gain.date) && typeof gain.amount === 'number' && gain.amount > 0 && typeof gain.note === 'string')
+    && expenses.every((expense) => expense && typeof expense.id === 'string' && periodIds.has(expense.periodId) && validDate(expense.date) && typeof expense.amount === 'number' && expense.amount > 0 && typeof expense.description === 'string' && categories.includes(expense.category))
+}
 
-        .pill-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            border-radius: 100px;
-            font-size: 13px;
-            font-weight: 500;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--text);
-            cursor: pointer;
-        }
+function Icon({ name, size = 18 }: { name: string; size?: number }) {
+  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  const paths: Record<string, ReactNode> = {
+    grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    list: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
+    chart: <><path d="M4 19V5M4 19h17" /><path d="m7 15 3-4 3 2 5-7" /></>,
+    archive: <><path d="M4 7h16v13H4z" /><path d="M3 4h18v3H3zM9 11h6" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
+    arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
+    arrowLeft: <><path d="M19 12H5M11 18l-6-6 6-6" /></>,
+    close: <><path d="m6 6 12 12M18 6 6 18" /></>,
+    check: <path d="m5 12 4 4L19 6" />,
+    chevron: <path d="m6 9 6 6 6-6" />,
+    download: <><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></>,
+    upload: <><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></>,
+    trash: <><path d="M4 7h16M10 11v6M14 11v6" /><path d="m6 7 1 14h10l1-14M9 7V4h6v3" /></>,
+    calendar: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 9h18" /></>,
+    filter: <path d="M4 5h16M7 12h10M10 19h4" />,
+    car: <><path d="m5 16 1.5-6h11L19 16" /><path d="M3 16h18v4H3zM6 20v1M18 20v1M7 13h.01M17 13h.01" /></>,
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
+  }
+  return <svg {...common} aria-hidden="true">{paths[name] || paths.info}</svg>
+}
 
-        .pill-btn.status { border-color: var(--green); color: var(--text); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+function App() {
+  const [store, setStore] = useState<Store>(loadStore)
+  const [view, setView] = useState<View>(() => viewFromPath(window.location.pathname))
+  const [selectedPeriodId, setSelectedPeriodId] = useState('')
+  const [showPeriodForm, setShowPeriodForm] = useState(false)
+  const [toast, setToast] = useState('')
 
-        .btn-yellow {
-            background: var(--primary);
-            color: var(--primary-text);
-            border: none;
-            font-weight: 700;
-            padding: 10px 16px;
-            border-radius: 100px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 14px;
-            margin-left: auto;
-            cursor: pointer;
-        }
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+  }, [store])
 
-        /* Cartão Principal Escuro */
-        .main-card {
-            background: linear-gradient(145deg, #18181b 0%, #09090b 100%);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 24px;
-            margin-bottom: 16px;
-            position: relative;
-            overflow: hidden;
-        }
+  useEffect(() => {
+    const openPeriod = store.periods.find((period) => period.status === 'open')
+    if (!selectedPeriodId || !store.periods.some((period) => period.id === selectedPeriodId)) {
+      setSelectedPeriodId(openPeriod?.id || store.periods[0]?.id || '')
+    }
+  }, [store.periods, selectedPeriodId])
 
-        /* Efeito de luz no fundo do cartão */
-        .main-card::before {
-            content: '';
-            position: absolute;
-            top: -50px; right: -50px;
-            width: 150px; height: 150px;
-            background: var(--primary);
-            filter: blur(80px);
-            opacity: 0.1;
-            border-radius: 50%;
-        }
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(''), 3400)
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
-        .card-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text-muted);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-        }
+  useEffect(() => {
+    const onPopState = () => setView(viewFromPath(window.location.pathname))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
-        .card-title {
-            font-size: 26px;
-            font-weight: 600;
-            line-height: 1.2;
-            margin-bottom: 12px;
-        }
+  const activePeriod = store.periods.find((period) => period.id === selectedPeriodId)
+  const openPeriod = store.periods.find((period) => period.status === 'open')
+  const navigate = (nextView: View) => {
+    setView(nextView)
+    const path = nextView === 'dashboard' ? '/' : `/${nextView}`
+    window.history.pushState({}, '', path)
+  }
 
-        .card-desc {
-            font-size: 13px;
-            color: var(--text-muted);
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
+  const notify = (message: string) => setToast(message)
+  const updateStore = (next: Store) => setStore(next)
 
-        .card-actions {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+  const createPeriod = (startDate: string) => {
+    if (openPeriod) {
+      setSelectedPeriodId(openPeriod.id)
+      setShowPeriodForm(false)
+      notify('Você já tem um período aberto. Encerre-o antes de começar outro.')
+      return
+    }
+    const newPeriod: Period = { id: makeId(), startDate, status: 'open' }
+    updateStore({ ...store, periods: [newPeriod, ...store.periods] })
+    setSelectedPeriodId(newPeriod.id)
+    setShowPeriodForm(false)
+    notify('Período aberto. Agora você pode registrar seus lançamentos.')
+  }
 
-        .btn-dark {
-            background: var(--surface-light);
-            color: var(--text);
-            border: none;
-            padding: 12px 20px;
-            border-radius: 100px;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
+  const closePeriod = (periodId: string) => {
+    updateStore({ ...store, periods: store.periods.map((period) => period.id === periodId ? { ...period, endDate: today(), status: 'closed' } : period) })
+    notify('Período encerrado e guardado no seu histórico.')
+  }
 
-        .link-text { color: var(--text); font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 4px;}
+  const addGain = (gain: Omit<Gain, 'id'>) => {
+    updateStore({ ...store, gains: [ { ...gain, id: makeId() }, ...store.gains ] })
+    notify('Ganho da 99 adicionado.')
+  }
 
-        /* Área de Saldo (Dentro do cartão quando ativo) */
-        .balance-section { margin-top: 24px; }
-        .balance-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        .balance-value { font-size: 36px; font-weight: 700; color: var(--primary); display: flex; align-items: baseline; gap: 4px; }
-        .balance-value small { font-size: 20px; }
-        .margin-text { font-size: 13px; color: var(--text-muted); margin-top: 4px; margin-bottom: 16px; }
-        
-        .progress-bar { height: 4px; background: var(--surface-light); border-radius: 2px; width: 100%; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--primary); width: 0%; border-radius: 2px; transition: width 0.3s; }
+  const addExpense = (expense: Omit<Expense, 'id'>) => {
+    updateStore({ ...store, expenses: [ { ...expense, id: makeId() }, ...store.expenses ] })
+    notify('Despesa adicionada ao período.')
+  }
 
-        /* Cartões de Receita/Despesa */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
+  const deleteEntry = (kind: 'gain' | 'expense', id: string) => {
+    if (kind === 'gain') updateStore({ ...store, gains: store.gains.filter((item) => item.id !== id) })
+    else updateStore({ ...store, expenses: store.expenses.filter((item) => item.id !== id) })
+    notify('Lançamento removido.')
+  }
 
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 16px;
-        }
-
-        .stat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .stat-title { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-        .stat-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; }
-        .icon-green { background: var(--green-bg); color: var(--green); }
-        .icon-red { background: var(--red-bg); color: var(--red); }
-        
-        .stat-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-        .stat-desc { font-size: 11px; color: var(--text-muted); }
-
-        /* Formulários (Aba Lançar) */
-        .input-group { margin-bottom: 16px; }
-        label { display: block; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); font-weight: 500; }
-        input, select { 
-            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid var(--border); 
-            background: var(--surface); color: var(--text); font-size: 16px; appearance: none;
-        }
-        input:focus, select:focus { outline: none; border-color: var(--primary); }
-        
-        .btn-full { 
-            width: 100%; padding: 16px; border-radius: 12px; border: none; font-size: 16px; 
-            font-weight: 700; cursor: pointer; background: var(--primary); color: var(--primary-text); margin-top: 8px;
-        }
-
-        /* Listas */
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
-        .list-item:last-child { border-bottom: none; }
-        .item-info { flex: 1; }
-        .item-desc { font-weight: 500; display: block; font-size: 14px; margin-bottom: 4px;}
-        .item-cat { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-        .item-val { font-weight: 600; font-size: 15px; }
-        .text-green { color: var(--green); }
-        .text-red { color: var(--red); }
-
-        /* Menu Flutuante Inferior */
-        .bottom-nav {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 32px);
-            max-width: 400px;
-            background: #18181b;
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            border-radius: 100px;
-            border: 1px solid #27272a;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            z-index: 100;
-        }
-
-        .nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 10px 0;
-            color: var(--text-muted);
-            font-size: 11px;
-            font-weight: 600;
-            border-radius: 100px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .nav-item.active { background: var(--primary); color: var(--primary-text); }
-        .nav-icon { width: 20px; height: 20px; fill: currentColor; }
-
-        .hidden { display: none !important; }
-        
-        /* Utilitários */
-        .flex-between { display: flex; justify-content: space-between; align-items: center; }
-        .mb-16 { margin-bottom: 16px; }
-    </style>
-</head>
-<body>
-
-    <!-- Cabeçalho Fixo -->
-    <header class="top-header">
-        <div class="logo-container">
-            <div class="logo-icon">99<span>—</span></div>
-            <div class="logo-text">99 Lucro Fácil</div>
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand" onClick={() => navigate('dashboard')} role="button" tabIndex={0}>
+          <span className="brand-mark"><Icon name="car" size={20} /></span>
+          <span><strong>Roda</strong>Certa</span>
         </div>
-        <div class="menu-icon">☰</div>
-    </header>
-
-    <div class="container">
-        
-        <!-- ================= TELA: INÍCIO ================= -->
-        <div id="view-inicio">
-            <div class="subtitle">CONTROLE DE CORRIDAS • <span id="data-hoje"></span></div>
-            <div class="hero-title">Veja o que sobrou<br>de verdade.</div>
-
-            <div class="action-row">
-                <div class="pill-btn">
-                    ☀️ Claro
-                </div>
-                <div class="pill-btn status" id="status-pill">
-                    <div class="status-dot"></div>
-                    <span id="status-text">Nenhum período aberto</span>
-                </div>
-            </div>
-
-            <!-- Cartão Principal -->
-            <div class="main-card" id="painel-controle">
-                <!-- Se NÃO tiver período ativo -->
-                <div id="status-inativo">
-                    <div class="card-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                        RESUMO DO MOMENTO
-                    </div>
-                    <div class="card-title">Sem período aberto no momento</div>
-                    <div class="card-desc">Quando sair para rodar, abra um período para enxergar o resultado daquela rodada com mais precisão.</div>
-                    <div class="card-actions">
-                        <button class="btn-dark" onclick="iniciarPeriodo()">
-                            🕒 Abrir um período
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Se TIVER período ativo -->
-                <div id="status-ativo" class="hidden">
-                    <div class="flex-between mb-16">
-                        <div class="card-label">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                            PERÍODO EM ANDAMENTO
-                        </div>
-                        <button class="btn-dark" style="padding: 6px 12px; font-size: 12px; color: var(--red); background: transparent; border: 1px solid var(--red);" onclick="encerrarPeriodo()">Encerrar</button>
-                    </div>
-                    
-                    <div class="balance-section">
-                        <div class="balance-label">SALDO ACUMULADO</div>
-                        <div class="balance-value"><small>R$</small> <span id="res-lucro">0,00</span></div>
-                        <div class="margin-text" id="res-margem">0% de margem</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="res-progresso" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <button class="btn-dark" style="width: 100%; justify-content: center;" onclick="switchTab('lancar')">
-                            + Adicionar Lançamento
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cards de Estatísticas -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Receitas</span>
-                        <div class="stat-icon icon-green">↗</div>
-                    </div>
-                    <div class="stat-value" id="card-receitas">R$ 0,00</div>
-                    <div class="stat-desc" id="card-receitas-desc">0 lançamentos</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Despesas</span>
-                        <div class="stat-icon icon-red">↘</div>
-                    </div>
-                    <div class="stat-value" id="card-despesas">R$ 0,00</div>
-                    <div class="stat-desc" id="card-despesas-desc">0 lançamentos</div>
-                </div>
-            </div>
-
-            <!-- Últimos lançamentos -->
-            <div class="main-card" style="padding: 20px;">
-                <div class="flex-between mb-16">
-                    <h2 style="font-size: 16px;">Últimos lançamentos</h2>
-                </div>
-                <div id="ultimos-lancamentos"></div>
-            </div>
+        <p className="sidebar-caption">O controle real do seu extra</p>
+        <nav className="main-nav" aria-label="Navegação principal">
+          <NavItem active={view === 'dashboard'} icon="grid" label="Visão geral" onClick={() => navigate('dashboard')} />
+          <NavItem active={view === 'lancamentos'} icon="list" label="Lançamentos" onClick={() => navigate('lancamentos')} />
+          <NavItem active={view === 'analise'} icon="chart" label="Análise" onClick={() => navigate('analise')} />
+          <NavItem active={view === 'backup'} icon="archive" label="Backup e exportação" onClick={() => navigate('backup')} />
+        </nav>
+        <div className="sidebar-note">
+          <span className="note-icon"><Icon name="info" size={16} /></span>
+          <div><strong>Feito para a sua rotina</strong><p>Você escolhe quando começa e quando termina.</p></div>
         </div>
+        <div className="sidebar-footer">Seus dados ficam salvos<br />neste dispositivo.</div>
+      </aside>
 
-        <!-- ================= TELA: LANÇAR ================= -->
-        <div id="view-lancar" class="hidden">
-            <div class="hero-title" style="margin-bottom: 24px;">Novo Lançamento</div>
-            
-            <div class="main-card">
-                <div class="input-group">
-                    <label>Tipo de Lançamento</label>
-                    <select id="tipo-lancamento" onchange="toggleCategoria()">
-                        <option value="ganho">Ganho (App 99)</option>
-                        <option value="despesa">Despesa</option>
-                    </select>
-                </div>
-                
-                <div class="input-group hidden" id="div-categoria">
-                    <label>Categoria da Despesa</label>
-                    <select id="categoria-lancamento">
-                        <option value="Combustível">Combustível</option>
-                        <option value="Manutenção">Manutenção</option>
-                        <option value="Limpeza">Limpeza</option>
-                        <option value="Documentação">Documentação</option>
-                        <option value="Seguro">Seguro</option>
-                        <option value="Outros">Outros</option>
-                    </select>
-                </div>
-                
-                <div class="input-group">
-                    <label>Descrição (opcional)</label>
-                    <input type="text" id="desc-lancamento" placeholder="Ex: Posto, Óleo...">
-                </div>
-                
-                <div class="input-group">
-                    <label>Valor (R$)</label>
-                    <input type="text" id="valor-lancamento" inputmode="decimal" placeholder="0,00">
-                </div>
-                
-                <button class="btn-full" onclick="adicionarLancamento()">Salvar Lançamento</button>
-            </div>
+      <main className="main-content">
+        <header className="topbar">
+          <div className="mobile-brand"><span className="brand-mark"><Icon name="car" size={18} /></span><strong>RodaCerta</strong></div>
+          <div className="breadcrumb"><span>Controle financeiro</span><span className="breadcrumb-separator">/</span><strong>{view === 'dashboard' ? 'Visão geral' : view === 'lancamentos' ? 'Lançamentos' : view === 'analise' ? 'Análise' : 'Backup'}</strong></div>
+          <div className="topbar-period"><span className="status-dot" /> {openPeriod ? 'Período em andamento' : 'Nenhum período aberto'}</div>
+        </header>
+
+        <div className="content-wrap">
+          {view === 'dashboard' && <Dashboard store={store} activePeriod={activePeriod} openPeriod={openPeriod} selectedPeriodId={selectedPeriodId} setSelectedPeriodId={setSelectedPeriodId} showPeriodForm={showPeriodForm} setShowPeriodForm={setShowPeriodForm} createPeriod={createPeriod} closePeriod={closePeriod} navigate={navigate} />}
+          {view === 'lancamentos' && <EntriesView store={store} activePeriod={activePeriod} selectedPeriodId={selectedPeriodId} setSelectedPeriodId={setSelectedPeriodId} addGain={addGain} addExpense={addExpense} deleteEntry={deleteEntry} navigate={navigate} />}
+          {view === 'analise' && <AnalysisView store={store} />}
+          {view === 'backup' && <BackupView store={store} updateStore={updateStore} notify={notify} />}
         </div>
-
-        <!-- ================= TELA: ANÁLISE ================= -->
-        <div id="view-analise" class="hidden">
-            <div class="hero-title" style="margin-bottom: 24px;">Análise</div>
-            
-            <div class="main-card">
-                <h2 style="font-size: 16px; margin-bottom: 16px;">Filtros</h2>
-                <div style="display: flex; gap: 10px;">
-                    <div class="input-group" style="flex: 1;">
-                        <label>De</label>
-                        <input type="date" id="filtro-inicio">
-                    </div>
-                    <div class="input-group" style="flex: 1;">
-                        <label>Até</label>
-                        <input type="date" id="filtro-fim">
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>Categoria (Despesas)</label>
-                    <select id="filtro-categoria">
-                        <option value="Todas">Todas as Categorias</option>
-                        <option value="Combustível">Combustível</option>
-                        <option value="Manutenção">Manutenção</option>
-                        <option value="Limpeza">Limpeza</option>
-                        <option value="Documentação">Documentação</option>
-                        <option value="Seguro">Seguro</option>
-                        <option value="Outros">Outros</option>
-                    </select>
-                </div>
-                <button class="btn-full" onclick="filtrarHistorico()">Filtrar Período</button>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Ganhos (Filtro)</span>
-                    </div>
-                    <div class="stat-value text-green" id="hist-ganhos">R$ 0,00</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Despesas (Filtro)</span>
-                    </div>
-                    <div class="stat-value text-red" id="hist-despesas">R$ 0,00</div>
-                </div>
-            </div>
-
-            <div class="main-card">
-                <h2 style="font-size: 16px; margin-bottom: 16px;">Lançamentos do Filtro</h2>
-                <div id="lista-historico"></div>
-            </div>
-        </div>
-
-        <!-- ================= TELA: BACKUP ================= -->
-        <div id="view-backup" class="hidden">
-            <div class="hero-title" style="margin-bottom: 24px;">Backup de Dados</div>
-            
-            <div class="main-card">
-                <div class="card-title" style="font-size: 20px;">Guarde seus dados</div>
-                <div class="card-desc">Exporte todos os seus lançamentos (desde o primeiro dia) em formato de planilha. Você poderá abrir no Excel, Google Sheets ou guardar como cópia de segurança.</div>
-                
-                <button class="btn-full" onclick="exportarCSV()" style="margin-top: 16px; background: var(--surface-light); color: var(--text);">
-                    📥 Baixar Planilha (CSV)
-                </button>
-            </div>
-
-            <div class="main-card">
-                <div class="card-title" style="font-size: 20px; color: var(--red);">Zona de Perigo</div>
-                <div class="card-desc">Isso apagará todos os dados salvos no seu celular. Não há como desfazer.</div>
-                <button class="btn-full" onclick="limparTudo()" style="margin-top: 16px; background: transparent; border: 1px solid var(--red); color: var(--red);">
-                    Apagar Todos os Dados
-                </button>
-            </div>
-        </div>
-
+        <nav className="mobile-nav" aria-label="Navegação mobile">
+          <button className={view === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}><Icon name="grid" size={18} /><span>Início</span></button>
+          <button className={view === 'lancamentos' ? 'active' : ''} onClick={() => navigate('lancamentos')}><Icon name="list" size={18} /><span>Lançamentos</span></button>
+          <button className={view === 'analise' ? 'active' : ''} onClick={() => navigate('analise')}><Icon name="chart" size={18} /><span>Análise</span></button>
+          <button className={view === 'backup' ? 'active' : ''} onClick={() => navigate('backup')}><Icon name="archive" size={18} /><span>Backup</span></button>
+        </nav>
+      </main>
+      {toast && <div className="toast"><span className="toast-check"><Icon name="check" size={14} /></span>{toast}</div>}
     </div>
+  )
+}
 
-    <!-- Menu Flutuante Inferior -->
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('inicio')" id="nav-inicio">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-            Início
-        </div>
-        <div class="nav-item" onclick="switchTab('lancar')" id="nav-lancar">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-            Lançar
-        </div>
-        <div class="nav-item" onclick="switchTab('analise')" id="nav-analise">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>
-            Análise
-        </div>
-        <div class="nav-item" onclick="switchTab('backup')" id="nav-backup">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"/></svg>
-            Backup
-        </div>
-    </nav>
+function NavItem({ active, icon, label, onClick }: { active: boolean; icon: string; label: string; onClick: () => void }) {
+  return <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon name={icon} size={18} /><span>{label}</span>{active && <span className="nav-active-line" />}</button>
+}
 
-<script>
-    // Pegar data de hoje
-    const dataHoje = new Date();
-    document.getElementById('data-hoje').innerText = dataHoje.toLocaleDateString('pt-BR');
+function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+  return <div className="page-header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action}</div>
+}
 
-    let periodoAtivo = null;
-    let todosLancamentos = [];
-    
-    try {
-        const p = localStorage.getItem('periodoAtivo');
-        const l = localStorage.getItem('todosLancamentos');
-        if (p) periodoAtivo = JSON.parse(p);
-        if (l) todosLancamentos = JSON.parse(l);
-    } catch (e) { console.error(e); }
+function Dashboard({ store, activePeriod, openPeriod, selectedPeriodId, setSelectedPeriodId, showPeriodForm, setShowPeriodForm, createPeriod, closePeriod, navigate }: { store: Store; activePeriod?: Period; openPeriod?: Period; selectedPeriodId: string; setSelectedPeriodId: (id: string) => void; showPeriodForm: boolean; setShowPeriodForm: (show: boolean) => void; createPeriod: (date: string) => void; closePeriod: (id: string) => void; navigate: (view: View) => void }) {
+  const periodGains = store.gains.filter((gain) => gain.periodId === selectedPeriodId)
+  const periodExpenses = store.expenses.filter((expense) => expense.periodId === selectedPeriodId)
+  const revenue = periodGains.reduce((sum, item) => sum + item.amount, 0)
+  const costs = periodExpenses.reduce((sum, item) => sum + item.amount, 0)
+  const balance = revenue - costs
+  const margin = revenue ? (balance / revenue) * 100 : 0
+  const categoryTotals = categories.map((category) => ({ category, total: periodExpenses.filter((expense) => expense.category === category).reduce((sum, item) => sum + item.amount, 0) })).filter((item) => item.total > 0).sort((a, b) => b.total - a.total)
 
-    function init() { 
-        atualizarInterface(); 
-    }
+  return <>
+    <PageHeader eyebrow="Visão geral" title="Faça o extra. Saiba o resultado." description="Um retrato honesto do que entra, do que sai e do que realmente fica no seu bolso." action={<div className="period-selector"><label>Período em foco</label><select value={selectedPeriodId} onChange={(event) => setSelectedPeriodId(event.target.value)}><option value="">Selecione um período</option>{store.periods.map((period) => <option key={period.id} value={period.id}>{formatDate(period.startDate)} {period.endDate ? `— ${formatDate(period.endDate)}` : '— em andamento'}</option>)}</select></div>} />
 
-    function switchTab(tab) {
-        document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        
-        document.getElementById(`view-${tab}`).classList.remove('hidden');
-        document.getElementById(`nav-${tab}`).classList.add('active');
+    <section className="hero-strip">
+      <div className="hero-copy"><span className="hero-kicker">{activePeriod ? activePeriod.status === 'open' ? 'Período atual' : 'Período encerrado' : 'Comece por aqui'}</span><h2>{activePeriod ? `De ${formatDate(activePeriod.startDate)}${activePeriod.endDate ? ` até ${formatDate(activePeriod.endDate)}` : ''}` : 'Abra um período para começar'}</h2><p>{activePeriod ? activePeriod.status === 'open' ? 'Registre cada corrida e cada gasto enquanto estiver na rua.' : 'Este período está fechado. O resultado continua disponível no histórico.' : 'O controle começa quando você decidir. Não precisa seguir uma rotina fixa.'}</p></div>
+      <div className="hero-actions">{activePeriod?.status === 'open' && <button className="button button-ghost" onClick={() => closePeriod(activePeriod.id)}>Encerrar período <Icon name="check" size={15} /></button>}<button className="button button-primary" onClick={() => activePeriod?.status === 'open' ? navigate('lancamentos') : setShowPeriodForm(true)}>{activePeriod?.status === 'open' ? 'Adicionar lançamento' : 'Abrir novo período'} <Icon name="arrow" size={16} /></button></div>
+      {showPeriodForm && <NewPeriodForm onCancel={() => setShowPeriodForm(false)} onCreate={createPeriod} />}
+    </section>
 
-        if(tab === 'inicio') atualizarInterface();
-        if(tab === 'analise') {
-            const hoje = new Date().toISOString().split('T')[0];
-            if(!document.getElementById('filtro-inicio').value) {
-                document.getElementById('filtro-inicio').value = hoje;
-                document.getElementById('filtro-fim').value = hoje;
-                filtrarHistorico();
-            }
-        }
-    }
+    <div className="section-heading"><div><span className="eyebrow">Resultado até agora</span><h2>Seu número mais importante</h2></div>{activePeriod && <span className={`profit-chip ${balance >= 0 ? 'positive' : 'negative'}`}>{balance >= 0 ? '● Operação positiva' : '● Operação no prejuízo'}</span>}</div>
+    <section className="metrics-grid">
+      <MetricCard label="Ganhos com a 99" value={formatMoney(revenue)} detail={`${periodGains.length} ${periodGains.length === 1 ? 'lançamento' : 'lançamentos'}`} tone="green" icon="↑" />
+      <MetricCard label="Despesas do carro" value={formatMoney(costs)} detail={`${periodExpenses.length} ${periodExpenses.length === 1 ? 'lançamento' : 'lançamentos'}`} tone="orange" icon="↓" />
+      <MetricCard label="Lucro / prejuízo" value={formatMoney(balance)} detail={revenue ? `${margin.toFixed(1).replace('.', ',')}% de margem` : 'Aguardando seus ganhos'} tone={balance >= 0 ? 'dark' : 'red'} icon={balance >= 0 ? '↗' : '↘'} />
+    </section>
 
-    function iniciarPeriodo() {
-        periodoAtivo = { id: Date.now(), dataInicio: new Date().toLocaleString('pt-BR') };
-        salvarDados();
-        atualizarInterface();
-        switchTab('inicio');
-    }
+    <div className="dashboard-grid">
+      <section className="panel expense-breakdown"><div className="panel-heading"><div><span className="eyebrow">Para onde foi</span><h3>Despesas por categoria</h3></div><button className="text-button" onClick={() => navigate('analise')}>Ver análise <Icon name="arrow" size={14} /></button></div>{categoryTotals.length ? <div className="category-list">{categoryTotals.map((item) => <div className="category-row" key={item.category}><div className="category-label"><span className="category-icon" style={{ backgroundColor: `${categoryMeta[item.category].color}1c`, color: categoryMeta[item.category].color }}>{categoryMeta[item.category].icon}</span><span>{item.category}</span></div><div className="category-value"><strong>{formatMoney(item.total)}</strong><div className="mini-bar"><span style={{ width: `${Math.max(10, (item.total / categoryTotals[0].total) * 100)}%`, backgroundColor: categoryMeta[item.category].color }} /></div></div></div>)}</div> : <EmptyState icon="◇" title="Ainda não há despesas" text="Registre combustível, manutenção e tudo que o carro consome para enxergar o custo real." action="Registrar despesa" onClick={() => navigate('lancamentos')} />}</section>
+      <section className="panel recent-panel"><div className="panel-heading"><div><span className="eyebrow">Movimentações</span><h3>Últimos lançamentos</h3></div><button className="icon-button" onClick={() => navigate('lancamentos')} aria-label="Ver todos"><Icon name="arrow" size={17} /></button></div><RecentEntries store={store} periodId={selectedPeriodId} navigate={navigate} /></section>
+    </div>
+    {!openPeriod && store.periods.length === 0 && <div className="tip-banner"><div className="tip-illustration"><Icon name="car" size={26} /></div><div><strong>Uma semana de cada vez</strong><p>Abra um período no dia que começar a rodar. Ao finalizar, encerre e compare: o que entrou menos tudo que o carro custou.</p></div><button className="button button-dark" onClick={() => setShowPeriodForm(true)}>Começar agora <Icon name="arrow" size={15} /></button></div>}
+  </>
+}
 
-    function encerrarPeriodo() {
-        if(confirm("Deseja encerrar este período e salvar no histórico?")) {
-            periodoAtivo = null;
-            salvarDados();
-            atualizarInterface();
-        }
-    }
+function NewPeriodForm({ onCancel, onCreate }: { onCancel: () => void; onCreate: (date: string) => void }) {
+  const [date, setDate] = useState(today())
+  return <form className="inline-period-form" onSubmit={(event) => { event.preventDefault(); onCreate(date) }}><div><label>Data de início</label><input type="date" value={date} max={today()} onChange={(event) => setDate(event.target.value)} required /></div><div className="period-form-copy"><strong>Pronto para começar?</strong><span>O período pode durar quantos dias você precisar.</span></div><button className="button button-primary" type="submit">Abrir período <Icon name="arrow" size={15} /></button><button className="close-form" type="button" onClick={onCancel} aria-label="Cancelar"><Icon name="close" size={17} /></button></form>
+}
 
-    function toggleCategoria() {
-        const tipo = document.getElementById('tipo-lancamento').value;
-        document.getElementById('div-categoria').classList.toggle('hidden', tipo !== 'despesa');
-    }
+function MetricCard({ label, value, detail, tone, icon }: { label: string; value: string; detail: string; tone: string; icon: string }) {
+  return <div className={`metric-card metric-${tone}`}><div className="metric-top"><span>{label}</span><b>{icon}</b></div><strong>{value}</strong><small>{detail}</small></div>
+}
 
-    function adicionarLancamento() {
-        const tipo = document.getElementById('tipo-lancamento').value;
-        let valorStr = document.getElementById('valor-lancamento').value.replace(',', '.');
-        const valor = parseFloat(valorStr);
-        const desc = document.getElementById('desc-lancamento').value || (tipo === 'ganho' ? 'Corrida 99' : 'Despesa');
-        const cat = tipo === 'despesa' ? document.getElementById('categoria-lancamento').value : 'Ganho';
+function EmptyState({ icon, title, text, action, onClick }: { icon: string; title: string; text: string; action?: string; onClick?: () => void }) {
+  return <div className="empty-state"><span className="empty-icon">{icon}</span><strong>{title}</strong><p>{text}</p>{action && onClick && <button className="text-button" onClick={onClick}>{action} <Icon name="arrow" size={14} /></button>}</div>
+}
 
-        if(isNaN(valor) || valor <= 0) return alert("Insira um valor válido.");
+function RecentEntries({ store, periodId, navigate }: { store: Store; periodId: string; navigate: (view: View) => void }) {
+  const entries = [
+    ...store.gains.filter((item) => item.periodId === periodId).map((item) => ({ id: item.id, date: item.date, label: item.note || 'Ganhos com a 99', amount: item.amount, kind: 'gain' as const })),
+    ...store.expenses.filter((item) => item.periodId === periodId).map((item) => ({ id: item.id, date: item.date, label: item.description, amount: item.amount, kind: 'expense' as const })),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
+  if (!entries.length) return <EmptyState icon="＋" title="Seu histórico começa aqui" text="Adicione seu primeiro ganho ou despesa para acompanhar a operação." action="Ir para lançamentos" onClick={() => navigate('lancamentos')} />
+  return <div className="recent-list">{entries.map((entry) => <div className="recent-row" key={`${entry.kind}-${entry.id}`}><span className={`entry-sign ${entry.kind}`}>{entry.kind === 'gain' ? '↑' : '↓'}</span><div className="recent-label"><strong>{entry.label}</strong><span>{formatShortDate(entry.date)} · {entry.kind === 'gain' ? '99' : 'Despesa'}</span></div><b className={entry.kind === 'gain' ? 'amount-positive' : 'amount-negative'}>{entry.kind === 'gain' ? '+' : '-'} {formatMoney(entry.amount)}</b></div>)}</div>
+}
 
-        if(!periodoAtivo) {
-            alert("Você precisa iniciar um período antes de lançar!");
-            return switchTab('inicio');
-        }
+function EntriesView({ store, activePeriod, selectedPeriodId, setSelectedPeriodId, addGain, addExpense, deleteEntry, navigate }: { store: Store; activePeriod?: Period; selectedPeriodId: string; setSelectedPeriodId: (id: string) => void; addGain: (gain: Omit<Gain, 'id'>) => void; addExpense: (expense: Omit<Expense, 'id'>) => void; deleteEntry: (kind: 'gain' | 'expense', id: string) => void; navigate: (view: View) => void }) {
+  const [kind, setKind] = useState<'gain' | 'expense'>('gain')
+  const [date, setDate] = useState(today())
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [category, setCategory] = useState<Category>('Combustível')
+  const [description, setDescription] = useState('')
+  const [filter, setFilter] = useState<'all' | 'gain' | 'expense'>('all')
+  const currentPeriod = store.periods.find((period) => period.id === selectedPeriodId)
+  const canAdd = currentPeriod?.status === 'open'
+  const entries = [
+    ...store.gains.filter((item) => item.periodId === selectedPeriodId).map((item) => ({ ...item, kind: 'gain' as const, label: item.note || 'Ganhos com a 99' })),
+    ...store.expenses.filter((item) => item.periodId === selectedPeriodId).map((item) => ({ ...item, kind: 'expense' as const, label: item.description })),
+  ].filter((item) => filter === 'all' || filter === item.kind).sort((a, b) => b.date.localeCompare(a.date))
 
-        todosLancamentos.push({
-            id: Date.now(), periodoId: periodoAtivo.id, dataHora: new Date().toLocaleString('pt-BR'),
-            dataFiltro: new Date().toISOString().split('T')[0], tipo: tipo, categoria: cat, descricao: desc, valor: valor
-        });
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    const parsedAmount = Number(amount)
+    if (!selectedPeriodId || !parsedAmount || parsedAmount <= 0) return
+    if (kind === 'gain') addGain({ periodId: selectedPeriodId, date, amount: parsedAmount, note })
+    else addExpense({ periodId: selectedPeriodId, date, amount: parsedAmount, description: description || category, category })
+    setAmount(''); setNote(''); setDescription('')
+  }
 
-        salvarDados();
-        document.getElementById('valor-lancamento').value = '';
-        document.getElementById('desc-lancamento').value = '';
-        alert("Lançamento salvo!");
-        switchTab('inicio');
-    }
+  return <>
+    <PageHeader eyebrow="Movimentações" title="Lançamentos" description="Anote o que aconteceu sem complicar. Um registro por vez deixa o resultado confiável." action={<button className="button button-primary" onClick={() => navigate('analise')}>Ver análise <Icon name="chart" size={16} /></button>} />
+    <div className="entries-layout">
+      <section className="panel entry-form-panel"><div className="panel-heading"><div><span className="eyebrow">Novo registro</span><h3>O que aconteceu?</h3></div><span className={`form-status ${canAdd ? 'ready' : ''}`}>{canAdd ? '● Período aberto' : '● Abra um período'}</span></div>{!canAdd && <div className="form-blocker"><Icon name="info" size={20} /><p>Para registrar lançamentos, abra um período em <button onClick={() => navigate('dashboard')}>Visão geral</button>. Você escolhe quando começar.</p></div>}<div className={`toggle-control ${!canAdd ? 'disabled' : ''}`}><button className={kind === 'gain' ? 'selected gain' : ''} onClick={() => setKind('gain')} type="button">Ganhei com a 99</button><button className={kind === 'expense' ? 'selected expense' : ''} onClick={() => setKind('expense')} type="button">Gastei com o carro</button></div><form onSubmit={submit} className="entry-form"><div className="form-grid"><label>Data<input type="date" value={date} min={currentPeriod?.startDate} max={currentPeriod?.endDate || today()} onChange={(event) => setDate(event.target.value)} disabled={!canAdd} required /></label><label>Valor<input type="number" min="0.01" step="0.01" placeholder="0,00" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={!canAdd} required /></label></div>{kind === 'gain' ? <label>Referência <span className="optional">opcional</span><input type="text" placeholder="Ex.: Corridas da noite" value={note} onChange={(event) => setNote(event.target.value)} disabled={!canAdd} /></label> : <><label>O que foi? <input type="text" placeholder="Ex.: Abastecimento no posto" value={description} onChange={(event) => setDescription(event.target.value)} disabled={!canAdd} required /></label><label>Categoria<select value={category} onChange={(event) => setCategory(event.target.value as Category)} disabled={!canAdd}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label></>}<button className="button button-primary full-button" disabled={!canAdd} type="submit">Adicionar {kind === 'gain' ? 'ganho' : 'despesa'} <Icon name="plus" size={16} /></button></form></section>
+      <section className="panel entries-list-panel"><div className="panel-heading entries-title"><div><span className="eyebrow">Histórico do período</span><h3>{currentPeriod ? `${formatDate(currentPeriod.startDate)}${currentPeriod.endDate ? ` — ${formatDate(currentPeriod.endDate)}` : ' — em andamento'}` : 'Selecione um período'}</h3></div><select className="compact-select" value={selectedPeriodId} onChange={(event) => setSelectedPeriodId(event.target.value)}><option value="">Período</option>{store.periods.map((period) => <option key={period.id} value={period.id}>{formatDate(period.startDate)} {period.status === 'open' ? '(aberto)' : ''}</option>)}</select></div><div className="list-filter"><button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todos <span>{entries.length}</span></button><button className={filter === 'gain' ? 'active' : ''} onClick={() => setFilter('gain')}>Ganhos</button><button className={filter === 'expense' ? 'active' : ''} onClick={() => setFilter('expense')}>Despesas</button></div>{entries.length ? <div className="full-entry-list">{entries.map((entry) => <div className="full-entry-row" key={`${entry.kind}-${entry.id}`}><span className={`entry-sign ${entry.kind}`}>{entry.kind === 'gain' ? '↑' : categoryMeta[entry.category as Category]?.icon || '↓'}</span><div className="full-entry-label"><strong>{entry.label}</strong><span>{formatDate(entry.date)}{entry.kind === 'expense' ? ` · ${entry.category}` : ' · Ganhos da 99'}</span></div><b className={entry.kind === 'gain' ? 'amount-positive' : 'amount-negative'}>{entry.kind === 'gain' ? '+' : '-'} {formatMoney(entry.amount)}</b><button className="delete-button" onClick={() => deleteEntry(entry.kind, entry.id)} aria-label="Excluir lançamento"><Icon name="trash" size={15} /></button></div>)}</div> : <EmptyState icon="⌁" title="Nenhum lançamento neste período" text="Registre o que entrou ou saiu para começar a acompanhar." />}</section>
+    </div>
+  </>
+}
 
-    function salvarDados() {
-        try {
-            localStorage.setItem('periodoAtivo', JSON.stringify(periodoAtivo));
-            localStorage.setItem('todosLancamentos', JSON.stringify(todosLancamentos));
-        } catch(e) { console.error(e); }
-    }
+function AnalysisView({ store }: { store: Store }) {
+  const allDates = [...store.gains.map((item) => item.date), ...store.expenses.map((item) => item.date)].sort()
+  const [from, setFrom] = useState(allDates[0] || today())
+  const [to, setTo] = useState(allDates[allDates.length - 1] || today())
+  const [category, setCategory] = useState<'Todas' | Category>('Todas')
+  const [periodId, setPeriodId] = useState('all')
+  const result = useMemo(() => {
+    const gains = store.gains.filter((item) => item.date >= from && item.date <= to && (periodId === 'all' || item.periodId === periodId))
+    const expenses = store.expenses.filter((item) => item.date >= from && item.date <= to && (periodId === 'all' || item.periodId === periodId) && (category === 'Todas' || item.category === category))
+    const gainTotal = gains.reduce((sum, item) => sum + item.amount, 0)
+    const expenseTotal = expenses.reduce((sum, item) => sum + item.amount, 0)
+    return { gains, expenses, gainTotal, expenseTotal, balance: gainTotal - expenseTotal }
+  }, [store, from, to, category, periodId])
+  const byCategory = categories.map((item) => ({ category: item, total: result.expenses.filter((expense) => expense.category === item).reduce((sum, expense) => sum + expense.amount, 0) })).filter((item) => item.total > 0).sort((a, b) => b.total - a.total)
+  const maxCategory = byCategory[0]?.total || 1
+  const months = Array.from(new Set([...result.gains.map((item) => item.date.slice(0, 7)), ...result.expenses.map((item) => item.date.slice(0, 7))])).sort()
 
-    function atualizarInterface() {
-        const statusText = document.getElementById('status-text');
-        const pillStatus = document.getElementById('status-pill');
-        
-        if(periodoAtivo) {
-            document.getElementById('status-ativo').classList.remove('hidden');
-            document.getElementById('status-inativo').classList.add('hidden');
-            
-            statusText.innerText = 'Período em andamento';
-            
-            let ganhos = 0, despesas = 0, numGanhos = 0, numDespesas = 0;
-            
-            const ativos = todosLancamentos.filter(l => l.periodoId === periodoAtivo.id);
-            ativos.forEach(l => {
-                if(l.tipo === 'ganho') { ganhos += l.valor; numGanhos++; }
-                else { despesas += l.valor; numDespesas++; }
-            });
+  return <>
+    <PageHeader eyebrow="Leitura do resultado" title="Análise" description="Escolha um intervalo e veja se o carro está pagando o próprio custo — e sobrando para você." />
+    <section className="filter-panel"><div className="filter-title"><span className="filter-icon"><Icon name="filter" size={18} /></span><div><strong>Filtrar análise</strong><span>Use datas e categorias para fazer uma leitura mais precisa.</span></div></div><div className="analysis-filters"><label>De<input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} /></label><label>Até<input type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} /></label><label>Período<select value={periodId} onChange={(event) => setPeriodId(event.target.value)}><option value="all">Todos os períodos</option>{store.periods.map((period) => <option value={period.id} key={period.id}>{formatDate(period.startDate)} {period.endDate ? `— ${formatDate(period.endDate)}` : '(aberto)'}</option>)}</select></label><label>Categoria<select value={category} onChange={(event) => setCategory(event.target.value as 'Todas' | Category)}><option>Todas</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label></div></section>
+    <section className="analysis-summary"><div className="analysis-summary-label"><span className="eyebrow">Resumo do intervalo</span><strong>{formatDate(from)} — {formatDate(to)}</strong></div><div className="analysis-summary-stat"><span>Ganhos</span><strong className="amount-positive">{formatMoney(result.gainTotal)}</strong></div><div className="analysis-summary-stat"><span>Despesas</span><strong className="amount-negative">{formatMoney(result.expenseTotal)}</strong></div><div className="analysis-summary-stat main"><span>{result.balance >= 0 ? 'Lucro líquido' : 'Prejuízo'}</span><strong>{formatMoney(result.balance)}</strong></div></section>
+    <div className="analysis-grid"><section className="panel chart-panel"><div className="panel-heading"><div><span className="eyebrow">Visão por categoria</span><h3>Onde o dinheiro está indo</h3></div></div>{byCategory.length ? <div className="bar-chart">{byCategory.map((item) => <div className="bar-row" key={item.category}><span className="bar-label">{item.category}</span><div className="bar-track"><span style={{ width: `${(item.total / maxCategory) * 100}%`, backgroundColor: categoryMeta[item.category].color }} /></div><strong>{formatMoney(item.total)}</strong></div>)}</div> : <EmptyState icon="◇" title="Sem despesas no filtro" text="Ajuste o intervalo ou registre uma despesa para aparecer aqui." />}</section><section className="panel analysis-detail"><div className="panel-heading"><div><span className="eyebrow">Leitura rápida</span><h3>O que isso quer dizer</h3></div></div><div className={`analysis-callout ${result.balance >= 0 ? 'positive' : 'negative'}`}><span>{result.balance >= 0 ? '↗' : '↘'}</span><div><strong>{result.balance >= 0 ? 'Você está no positivo' : 'Atenção ao custo da operação'}</strong><p>{result.gainTotal > 0 ? result.balance >= 0 ? `Depois de pagar as despesas, sobraram ${formatMoney(result.balance)} neste recorte.` : `As despesas passaram os ganhos em ${formatMoney(Math.abs(result.balance))} neste recorte.` : 'Adicione os ganhos da 99 para calcular a rentabilidade.'}</p></div></div><div className="detail-list"><div><span>Períodos com lançamento</span><strong>{new Set([...result.gains.map((item) => item.periodId), ...result.expenses.map((item) => item.periodId)]).size}</strong></div><div><span>Ganhos registrados</span><strong>{result.gains.length}</strong></div><div><span>Despesas registradas</span><strong>{result.expenses.length}</strong></div></div></section></div>
+    {months.length > 1 && <section className="panel monthly-panel"><div className="panel-heading"><div><span className="eyebrow">Evolução</span><h3>Movimentação por mês</h3></div></div><div className="month-grid">{months.map((month) => { const gain = result.gains.filter((item) => item.date.startsWith(month)).reduce((sum, item) => sum + item.amount, 0); const expense = result.expenses.filter((item) => item.date.startsWith(month)).reduce((sum, item) => sum + item.amount, 0); return <div className="month-card" key={month}><span>{monthName(`${month}-01`)}</span><strong>{formatMoney(gain - expense)}</strong><small>Ganhos {formatMoney(gain)} · custos {formatMoney(expense)}</small></div> })}</div></section>}
+  </>
+}
 
-            const lucro = ganhos - despesas;
-            const margem = ganhos > 0 ? (lucro / ganhos) * 100 : 0;
-
-            document.getElementById('res-lucro').innerText = formatarMoeda(lucro).replace('R$', '').trim();
-            document.getElementById('res-margem').innerText = `${margem.toFixed(1).replace('.', ',')}% de margem`;
-            
-            const progresso = Math.max(0, Math.min(100, margem));
-            document.getElementById('res-progresso').style.width = `${progresso}%`;
-
-            document.getElementById('card-receitas').innerText = formatarMoeda(ganhos);
-            document.getElementById('card-receitas-desc').innerText = `${numGanhos} lançamentos`;
-            
-            document.getElementById('card-despesas').innerText = formatarMoeda(despesas);
-            document.getElementById('card-despesas-desc').innerText = `${numDespesas} lançamentos`;
-
-            renderizarUltimos(ativos);
-
-        } else {
-            document.getElementById('status-ativo').classList.add('hidden');
-            document.getElementById('status-inativo').classList.remove('hidden');
-            statusText.innerText = 'Nenhum período aberto';
-            
-            document.getElementById('card-receitas').innerText = 'R$ 0,00';
-            document.getElementById('card-receitas-desc').innerText = `0 lançamentos`;
-            document.getElementById('card-despesas').innerText = 'R$ 0,00';
-            document.getElementById('card-despesas-desc').innerText = `0 lançamentos`;
-
-            renderizarUltimos(todosLancamentos);
-        }
-    }
-
-    function renderizarUltimos(lista) {
-        const container = document.getElementById('ultimos-lancamentos');
-        container.innerHTML = '';
-        
-        const ultimos = [...lista].sort((a,b) => b.id - a.id).slice(0, 5);
-        
-        if(ultimos.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:12px; padding: 20px 0;">Nenhum lançamento recente.</p>';
-            return;
-        }
-
-        ultimos.forEach(l => {
-            container.innerHTML += `
-                <div class="list-item">
-                    <div class="item-info">
-                        <span class="item-desc">${l.descricao}</span>
-                        <span class="item-cat">${l.categoria} • ${l.dataHora.split(' ')[0]}</span>
-                    </div>
-                    <span class="item-val ${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
-                        ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
-                    </span>
-                </div>`;
-        });
-    }
-
-    function filtrarHistorico() {
-        const dtInicio = document.getElementById('filtro-inicio').value;
-        const dtFim = document.getElementById('filtro-fim').value;
-        const catFiltro = document.getElementById('filtro-categoria').value;
-
-        let filtrados = todosLancamentos.filter(l => l.periodoId !== (periodoAtivo ? periodoAtivo.id : null));
-        if(dtInicio) filtrados = filtrados.filter(l => l.dataFiltro >= dtInicio);
-        if(dtFim) filtrados = filtrados.filter(l => l.dataFiltro <= dtFim);
-        
-        let paraExibir = [...filtrados];
-
-        if(catFiltro !== 'Todas') {
-            paraExibir = paraExibir.filter(l => l.tipo === 'despesa' && l.categoria === catFiltro);
-        }
-
-        let ganhos = 0, despesas = 0;
-        filtrados.forEach(l => { if(l.tipo === 'ganho') ganhos += l.valor; else despesas += l.valor; });
-        
-        document.getElementById('hist-ganhos').innerText = formatarMoeda(ganhos);
-        document.getElementById('hist-despesas').innerText = formatarMoeda(despesas);
-
-        const container = document.getElementById('lista-historico');
-        container.innerHTML = '';
-        
-        if(paraExibir.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:13px;">Nenhum lançamento encontrado.</p>';
-            return;
-        }
-
-        paraExibir.sort((a,b) => b.id - a.id).forEach(l => {
-            container.innerHTML += `
-                <div class="list-item">
-                    <div class="item-info">
-                        <span class="item-desc">${l.descricao}</span>
-                        <span class="item-cat">${l.categoria} • ${l.dataHora.split(' ')[0]}</span>
-                    </div>
-                    <span class="item-val ${l.tipo === 'ganho' ? 'text-green' : 'text-red'}">
-                        ${l.tipo === 'ganho' ? '+' : '-'} ${formatarMoeda(l.valor)}
-                    </span>
-                </div>`;
-        });
-    }
-
-    function exportarCSV() {
-        if(todosLancamentos.length === 0) return alert("Não há dados para exportar.");
-        let csvContent = "Data e Hora;Tipo;Categoria;Descricao;Valor (R$)\n";
-        todosLancamentos.forEach(l => {
-            const valorStr = (l.valor || 0).toFixed(2).replace('.', ',');
-            csvContent += `${l.dataHora};${l.tipo};${l.categoria};${l.descricao};${valorStr}\n`;
-        });
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `99_lucro_facil_backup_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
-    }
-
-    function limparTudo() {
-        if(confirm("⚠️ CUIDADO: Isso apagará TODOS os seus dados. Tem certeza?")) {
-            localStorage.clear();
-            periodoAtivo = null;
-            todosLancamentos = [];
-            atualizarInterface();
-            alert("Dados apagados com sucesso.");
-        }
-    }
-
-    function formatarMoeda(valor) {
-        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    init();
-</script>
-</body>
-</html>
+function BackupView({ store, updateStore, notify }: { store: Store; updateStore: (store: Store) => void; notify: (message: string) => void }) {
+  const fileInput = useRef<HTMLInputElement>(null)
+  const totalEntries = store.gains.length + store.expenses.length
+  const download = (content: string, filename: string, type: string) => { const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url) }
+  const exportJson = () => { download(JSON.stringify({ app: 'RodaCerta', version: 1, exportedAt: new Date().toISOString(), ...store }, null, 2), `rodacerta-backup-${today()}.json`, 'application/json'); notify('Backup JSON gerado com sucesso.') }
+  const exportCsv = () => { const rows = [['tipo', 'data', 'valor', 'descricao', 'categoria', 'periodo_inicio', 'periodo_fim']]; store.gains.forEach((item) => { const period = store.periods.find((p) => p.id === item.periodId); rows.push(['Ganho 99', item.date, item.amount.toFixed(2).replace('.', ','), item.note || 'Ganhos com a 99', '', period?.startDate || '', period?.endDate || '']) }); store.expenses.forEach((item) => { const period = store.periods.find((p) => p.id === item.periodId); rows.push(['Despesa', item.date, item.amount.toFixed(2).replace('.', ','), item.description, item.category, period?.startDate || '', period?.endDate || '']) }); const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n'); download(`\ufeff${csv}`, `rodacerta-lancamentos-${today()}.csv`, 'text/csv;charset=utf-8'); notify('Planilha CSV gerada. Ela abre no Excel e no Google Planilhas.') }
+  const importBackup = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const parsed: unknown = JSON.parse(String(reader.result)); if (!isValidBackup(parsed)) throw new Error('Formato inválido'); updateStore({ periods: parsed.periods, gains: parsed.gains, expenses: parsed.expenses }); notify('Backup restaurado. Seus dados voltaram para o aplicativo.') } catch { notify('Não foi possível ler este backup. Escolha um arquivo JSON do RodaCerta.') } }; reader.readAsText(file); event.target.value = '' }
+  return <>
+    <PageHeader eyebrow="Segurança dos seus dados" title="Backup e exportação" description="Tenha uma cópia independente e leve seus lançamentos para uma planilha quando quiser." />
+    <div className="backup-overview"><div className="backup-overview-item"><span>Períodos guardados</span><strong>{store.periods.length}</strong></div><div className="backup-overview-item"><span>Lançamentos</span><strong>{totalEntries}</strong></div><div className="backup-overview-item"><span>Última cópia</span><strong>Neste dispositivo</strong></div><div className="backup-shield"><Icon name="archive" size={21} /><span>Salvo automaticamente no navegador</span></div></div>
+    <div className="backup-grid"><section className="panel backup-card"><div className="backup-card-icon green"><Icon name="download" size={23} /></div><div><span className="eyebrow">Cópia completa</span><h3>Fazer backup dos dados</h3><p>Gere um arquivo JSON com períodos, ganhos, despesas e categorias. Guarde em um local seguro para restaurar depois.</p><button className="button button-primary" onClick={exportJson}>Baixar backup JSON <Icon name="download" size={16} /></button></div></section><section className="panel backup-card"><div className="backup-card-icon orange"><Icon name="list" size={23} /></div><div><span className="eyebrow">Para planilhas</span><h3>Exportar lançamentos</h3><p>Baixe tudo em CSV, um formato que funciona bem no Excel, Google Planilhas e outros aplicativos.</p><button className="button button-dark" onClick={exportCsv}>Baixar planilha CSV <Icon name="download" size={16} /></button></div></section></div>
+    <section className="panel restore-card"><div className="restore-icon"><Icon name="upload" size={23} /></div><div className="restore-copy"><span className="eyebrow">Já tem uma cópia?</span><h3>Restaurar backup</h3><p>Importe um arquivo JSON gerado pelo RodaCerta. A restauração substitui os dados atuais deste navegador.</p></div><input ref={fileInput} type="file" accept="application/json,.json" onChange={importBackup} hidden /><button className="button button-ghost" onClick={() => fileInput.current?.click()}>Escolher arquivo <Icon name="upload" size={16} /></button></section>
+    <div className="backup-tip"><span className="tip-icon"><Icon name="info" size={17} /></span><p><strong>Uma boa prática:</strong> baixe um backup JSON sempre que encerrar um período importante. O aplicativo salva automaticamente, mas a cópia exportada fica independente do navegador.</p></div>
+  </>
+}
+        export default App
